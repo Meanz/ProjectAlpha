@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProjectAlpha", "ProjectAlpha\ProjectAlpha.vcxproj", "{BA382588-CA4E-4F52-86DA-31E6549C4647}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlatformLayer", "PlatformLayer\PlatformLayer.vcxproj", "{D377E41D-C8CE-401D-AFBE-BE235F0053D0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BA382588-CA4E-4F52-86DA-31E6549C4647} = {BA382588-CA4E-4F52-86DA-31E6549C4647}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BA382588-CA4E-4F52-86DA-31E6549C4647}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BA382588-CA4E-4F52-86DA-31E6549C4647}.Debug|Win32.Build.0 = Debug|Win32
+		{BA382588-CA4E-4F52-86DA-31E6549C4647}.Release|Win32.ActiveCfg = Release|Win32
+		{BA382588-CA4E-4F52-86DA-31E6549C4647}.Release|Win32.Build.0 = Release|Win32
+		{D377E41D-C8CE-401D-AFBE-BE235F0053D0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D377E41D-C8CE-401D-AFBE-BE235F0053D0}.Debug|Win32.Build.0 = Debug|Win32
+		{D377E41D-C8CE-401D-AFBE-BE235F0053D0}.Release|Win32.ActiveCfg = Release|Win32
+		{D377E41D-C8CE-401D-AFBE-BE235F0053D0}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
