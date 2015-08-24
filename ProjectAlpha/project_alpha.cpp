@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "SoftwareRenderer.h"
+#include "Demo.h"
 
 void* mem_alloc(uint32 size)
 {
@@ -19,20 +20,34 @@ void mem_free(uint32 address, uint32 size)
 
 extern "C"
 {
+	__declspec(dllexport) GameInitDef(_GameInit) {
+		//Setup sentinel
+		gameMemory->memory.Sentinel = (Memory::MemoryBlock*)gameMemory->permanentMemory;
+		gameMemory->memory.Sentinel->Flags = 0;
+		gameMemory->memory.Sentinel->Size = 0;
+		gameMemory->memory.Sentinel->Next = gameMemory->memory.Sentinel;
+		gameMemory->memory.Sentinel->Prev = gameMemory->memory.Sentinel;
+
+		Memory::InsertBlock(gameMemory->memory.Sentinel,
+			gameMemory->permanentMemorySize - sizeof(Memory::MemoryBlock),
+			(void*)((uint8*)gameMemory->permanentMemory + sizeof(Memory::MemoryBlock))
+		);
+	}
+
 	__declspec(dllexport) GameUpdateAndRenderDef(_GameUpdateAndRender) {
 
 		//std::stringstream str;
 		//str << "Number: " << gameState.number;
 		//MessageBox(NULL, str.str().c_str(), "The number", MB_OK);
 
-		if (gameState.pixelBuffer.memory) {
+		if (gameState->pixelBuffer.memory) {
 
 			//Do bitmap memory modifications
 
 			//Create a rect in tl
-			for (int32 y = 0; y < gameState.pixelBuffer.height; y++) {
-				for (int32 x = 0; x < gameState.pixelBuffer.width; x++) {
-					((uint32*)gameState.pixelBuffer.memory)[x + (y * gameState.pixelBuffer.width)] = 0x00ffffff;
+			for (int32 y = 0; y < gameState->pixelBuffer.height; y++) {
+				for (int32 x = 0; x < gameState->pixelBuffer.width; x++) {
+					((uint32*)gameState->pixelBuffer.memory)[x + (y * gameState->pixelBuffer.width)] = 0x00ffffff;
 				}
 			}
 
@@ -51,7 +66,7 @@ extern "C"
 		}
 
 		real32 fovY = ToRadians(70);
-		real32 aspect = (real32)gameState.pixelBuffer.width / (real32)gameState.pixelBuffer.height;
+		real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
 
 		mat4 projection;
 		InitPerspective(projection, fovY, aspect, 0.1f, 1000.0f);
@@ -73,7 +88,7 @@ extern "C"
 		v2.Position = transform * v2.Position;
 		v3.Position = transform * v3.Position;
 		
-		RenderTriangle(gameState.pixelBuffer, { v1, v2, v3 });
+		RenderTriangle(gameState->pixelBuffer, { v1, v2, v3 });
 
 		//mvp
 		//row major
@@ -90,8 +105,9 @@ extern "C"
 		v2.Position = transform * v2.Position;
 		v3.Position = transform * v3.Position;
 
-		RenderTriangle(gameState.pixelBuffer, { v1, v2, v3 });
+		RenderTriangle(gameState->pixelBuffer, { v1, v2, v3 });
 
-
+		
+		DemoInit(gameState, gameMemory);
 	}
 }

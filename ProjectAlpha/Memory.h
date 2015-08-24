@@ -23,7 +23,7 @@ namespace ProjectAlpha
 
 		struct Memory
 		{
-			MemoryBlock Sentinel;
+			MemoryBlock* Sentinel;
 		};
 
 		MemoryBlock* InsertBlock(MemoryBlock* prev, uint64 size, void* memory);

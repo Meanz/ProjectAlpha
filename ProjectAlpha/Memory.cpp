@@ -24,7 +24,7 @@ namespace ProjectAlpha
 		{
 			MemoryBlock* result = 0;
 			// TODO(meanzie): find best match block!
-			for (MemoryBlock* block = &memory.Sentinel; block != &memory.Sentinel; block = block->Next)
+			for (MemoryBlock* block = memory.Sentinel->Next; block != memory.Sentinel; block = block->Next)
 			{
 				if (!(block->Flags & Memory_Used))
 				{
@@ -40,24 +40,34 @@ namespace ProjectAlpha
 
 		bool32 MergeIfPossible(Memory memory, MemoryBlock* blockA, MemoryBlock* blockB)
 		{
-			if (blockA != &memory.Sentinel &&
-				blockB != &memory.Sentinel &&
-				(blockA->Flags & Memory_Used || blockB->Flags & Memory_Used)) {
+			if (blockA == memory.Sentinel ||
+				blockB == memory.Sentinel ||
+				blockA->Flags & Memory_Used || 
+				blockB->Flags & Memory_Used) {
 				return ((bool32)false);
 			}
 
-			uint8* expectedSecond = (uint8*)blockA + sizeof(MemoryBlock) + blockA->Size;
+			uint8* expectedSecond = (uint8*)(blockA + sizeof(MemoryBlock) + blockA->Size);
 			if ((uint8*)blockB != expectedSecond)
 			{
 				return((bool32)false);
 			}
 
-			//
-			blockA->Size += blockB->Size + sizeof(MemoryBlock);
-			blockB->Prev->Next = blockB->Next;
+			//Merge into a
+			blockA->Size += (blockB->Size + sizeof(MemoryBlock));
+			blockA->Next = blockB->Next;
 			blockB->Next->Prev = blockA;
+			if (!blockB->Next)
+			{
+				ASSERT(false);
+			}
+
+			
+
+			//Delete block!
 			blockB->Flags |= MemoryReleased;
-			blockB->Next = blockB->Prev = 0; //NULL
+			blockB->Next = 0; //NULL
+			blockB->Prev = 0;
 			blockB->Size = 0;
 
 			return((bool32)true);
@@ -77,27 +87,28 @@ namespace ProjectAlpha
 
 		void MemoryRelease(Memory memory, void* _memory)
 		{
-			MemoryBlock* block = (MemoryBlock*)_memory - 1;
+			MemoryBlock* block = ((MemoryBlock*)_memory - 1);
 			MemoryRelease(memory, block);
 		}
 
 		void* MemoryAlloc(Memory memory, uint64 size)
 		{
+			size += sizeof(MemoryBlock);
 			void* result = 0;
 			for (;;) {
 				MemoryBlock* block = FindBlockForSize(memory, size);
 				if (block && (size <= block->Size))
 				{
 					block->Flags |= Memory_Used;
-					result = (uint8 *)(block + 1);
-
+					result = (void*)((uint8*)block + sizeof(MemoryBlock));
 					uint64 remainingSize = block->Size - size;
 					uint64 blockSplitThreshold = 4096; //1 page
 					if (remainingSize > blockSplitThreshold)
 					{
 						block->Size -= remainingSize;
-						InsertBlock(block, remainingSize, (uint8*)result + size);
+						InsertBlock(block, remainingSize, (void*)((uint8*)result + size));
 					}
+					break;
 				}
 				else
 				{

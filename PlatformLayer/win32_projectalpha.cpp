@@ -7,6 +7,7 @@
 struct Win32GameCode
 {
 	HMODULE gameCodeDLL;
+	GameInit* gameInit;
 	GameUpdateAndRender* gameRender;
 };
 
@@ -30,23 +31,6 @@ struct Win32WindowDimension
 
 global_variable bool running = false;
 global_variable Win32OffscreenBuffer backbuffer;
-
-//
-
-GameMemory Win32_SetupMemory()
-{
-	GameMemory gameMemory;
-
-	gameMemory.permanentMemorySize = Megabytes(64);
-	gameMemory.transientMemorySize = Gigabytes(4);
-
-	uint64 totalSize = gameMemory.permanentMemorySize + gameMemory.transientMemorySize;
-
-	gameMemory.permanentMemory = VirtualAlloc(0, (SIZE_T)totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	gameMemory.transientMemory = ((uint8 *)gameMemory.permanentMemory + gameMemory.permanentMemorySize);
-
-	return gameMemory;
-}
 
 //wndproc
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -211,7 +195,7 @@ void LoadGameCode(Win32GameCode* gameCode) {
 
 	//GetProcAddress
 	gameCode->gameRender = (GameUpdateAndRender*)GetProcAddress(gameCode->gameCodeDLL, "_GameUpdateAndRender");
-
+	gameCode->gameInit = (GameInit*)GetProcAddress(gameCode->gameCodeDLL, "_GameInit");
 }
 
 bool __Win32ReadFile(File file)
@@ -256,7 +240,17 @@ int CALLBACK WinMain(
 	int       nCmdShow
 	) {
 	//Do alloc
-	GameMemory gameMemory = Win32_SetupMemory();
+
+	uint64 permanentMemorySize = Megabytes(64);
+	uint64 transientMemorySize = Gigabytes(4);
+	uint64 totalSize = permanentMemorySize + transientMemorySize;
+
+	GameMemory* gameMemory = (GameMemory*)VirtualAlloc(0, (SIZE_T)totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	gameMemory->permanentMemory = (void*)((uint8*)(gameMemory + sizeof(GameMemory)));
+	gameMemory->permanentMemorySize = permanentMemorySize - sizeof(GameMemory);
+	gameMemory->transientMemory = (void*)((uint8*)gameMemory->permanentMemory + gameMemory->permanentMemorySize);
+	gameMemory->transientMemorySize = transientMemorySize;
+	
 
 	//Setup state
 	GameState gameState;
@@ -279,6 +273,8 @@ int CALLBACK WinMain(
 
 	if (gameCode.gameRender)
 	{
+		gameCode.gameInit(gameMemory, &gameState);
+
 		running = true;
 		int xOffset = 0;
 		int yOffset = 0;
@@ -301,7 +297,7 @@ int CALLBACK WinMain(
 			gameState.pixelBuffer.size = backbuffer.memorySize;
 
 			//Do modifications of our pixel buffer
-			gameCode.gameRender(gameMemory, gameState);
+			gameCode.gameRender(gameMemory, &gameState);
 
 			//Blit the pixelbuffer to the screen
 			HDC hdc = GetDC(window);
@@ -314,7 +310,7 @@ int CALLBACK WinMain(
 	}
 
 	//Do dealloc
-	VirtualFree(gameMemory.permanentMemory, NULL, MEM_RELEASE);
+	VirtualFree(gameMemory, NULL, MEM_RELEASE);
 
 	return 0;
 }

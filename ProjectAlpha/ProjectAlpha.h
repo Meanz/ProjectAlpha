@@ -3,6 +3,8 @@
 #include "ctdfs.h"
 #include "Platform.h"
 #include "Memory.h"
+#include "VecMath.h"
+#include <glm\glm.hpp>
 
 using namespace ProjectAlpha;
 
@@ -24,11 +26,18 @@ struct PixelBuffer
 	void* memory;
 };
 
+struct GameScene
+{
+	mat4 ProjectionMatrix;
+	mat4 ViewMatrix;
+};
+
 struct GameState
 {
 	Platform platform;
 	PixelBuffer pixelBuffer;
 	uint64 number;
+	GameScene Scene;
 };
 
 void* mem_alloc(uint32 size);
@@ -38,7 +47,11 @@ extern "C"
 {
 	void GameGetSoundSamples();
 
-	#define GameUpdateAndRenderDef(name) void name(GameMemory gameMemory, GameState gameState)
+#define GameInitDef(name) void name(GameMemory* gameMemory, GameState* gameState)
+	typedef GameInitDef(GameInit);
+	__declspec(dllexport) GameInitDef(_GameInit);
+
+	#define GameUpdateAndRenderDef(name) void name(GameMemory* gameMemory, GameState* gameState)
 	typedef GameUpdateAndRenderDef(GameUpdateAndRender);
 	__declspec(dllexport) GameUpdateAndRenderDef(_GameUpdateAndRender);
 }

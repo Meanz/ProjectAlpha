@@ -88,6 +88,7 @@ struct mat3
 
 struct mat4
 {
+	//column major
 	real32 values[16];
 
 	mat4() {
