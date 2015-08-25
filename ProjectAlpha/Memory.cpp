@@ -46,13 +46,11 @@ namespace ProjectAlpha
 				blockB->Flags & Memory_Used) {
 				return ((bool32)false);
 			}
-
 			uint8* expectedSecond = (uint8*)(blockA + sizeof(MemoryBlock) + blockA->Size);
 			if ((uint8*)blockB != expectedSecond)
 			{
 				return((bool32)false);
 			}
-
 			//Merge into a
 			blockA->Size += (blockB->Size + sizeof(MemoryBlock));
 			blockA->Next = blockB->Next;
@@ -61,15 +59,11 @@ namespace ProjectAlpha
 			{
 				ASSERT(false);
 			}
-
-			
-
-			//Delete block!
-			blockB->Flags |= MemoryReleased;
-			blockB->Next = 0; //NULL
+			//Delete block, null the memory
+			blockB->Flags = 0;
+			blockB->Next = 0;
 			blockB->Prev = 0;
 			blockB->Size = 0;
-
 			return((bool32)true);
 		}
 

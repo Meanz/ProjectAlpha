@@ -4,7 +4,6 @@
 #include "Platform.h"
 #include "Memory.h"
 #include "VecMath.h"
-#include <glm\glm.hpp>
 
 using namespace ProjectAlpha;
 

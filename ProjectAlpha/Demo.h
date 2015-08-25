@@ -66,21 +66,12 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 	real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
 
 	//Siiiince we are kind of in immediate mode, here we go!
-	mat4 projection;
-	InitPerspective(projection, fovY, aspect, 0.1f, 1000.0f);
+
+	InitIdentity(gameState->Scene.ViewMatrix);
+	InitPerspective(gameState->Scene.ProjectionMatrix, fovY, aspect, 0.1f, 1000.0f);
 
 	mat4 translation;
-	InitTranslation(translation, vec3{ 0, 0, 3.0f });
-
-	mat4 rotation;
-	InitRotation(rotation, { 0.0f, 1.0f, 0.0f }, 0.0f);
-
-	mat4 view;
-	InitTranslation(view, vec3{ 0.0f, 0.0f, -3.0f });
-
-	//mvp
-	//row major
-	mat4 transform = rotation * translation * projection;
+	InitTranslation(translation, vec3{ 5.0f, 0.0f, 0.0f });
 
 	for (uint32 i = 0; i < numIndices; i += 3)
 	{
@@ -97,7 +88,7 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 		//It should be Model * View * Projection
 		//Let's see if that actually works :D
 		mat4 __pos__ = translation;
-		mat4 transform = (gameState->Scene.ProjectionMatrix * gameState->Scene.ViewMatrix * (__pos__));
+		mat4 transform = __pos__ * gameState->Scene.ProjectionMatrix;
 
 		v1.Position = transform * v1.Position;
 		v2.Position = transform * v2.Position;

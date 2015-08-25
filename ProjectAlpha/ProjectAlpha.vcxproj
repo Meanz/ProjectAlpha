@@ -66,7 +66,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="md2.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="project_alpha.cpp" />
     <ClCompile Include="VecMath.cpp" />
@@ -74,7 +73,6 @@
   <ItemGroup>
     <ClInclude Include="ctdfs.h" />
     <ClInclude Include="Demo.h" />
-    <ClInclude Include="md2.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="SoftwareRenderer.h" />
     <ClInclude Include="Platform.h" />
