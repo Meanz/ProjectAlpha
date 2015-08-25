@@ -1,5 +1,18 @@
+#pragma once
 
 #include <stdint.h>
+#include <glm/glm.hpp>
+
+//Matrices
+using glm::mat3;
+using glm::mat4;
+
+using glm::quat;
+
+//Vectors
+using glm::vec2;
+using glm::vec3;
+using glm::vec4;
 
 #define ASSERT(expr) if(!expr) { \
 	((int*)0)[0] = 0; \

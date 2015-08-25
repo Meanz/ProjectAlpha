@@ -31,7 +31,7 @@ extern "C"
 		Memory::InsertBlock(gameMemory->memory.Sentinel,
 			gameMemory->permanentMemorySize - sizeof(Memory::MemoryBlock),
 			(void*)((uint8*)gameMemory->permanentMemory + sizeof(Memory::MemoryBlock))
-		);
+			);
 	}
 
 	__declspec(dllexport) GameUpdateAndRenderDef(_GameUpdateAndRender) {
@@ -53,6 +53,8 @@ extern "C"
 
 		}
 
+		using namespace Renderer;
+
 		static real32 val = 0;
 
 		//Do scan line thingy
@@ -65,49 +67,27 @@ extern "C"
 			//val = 0.0f;
 		}
 
-		real32 fovY = ToRadians(70);
+		real32 fovY = glm::radians(70.0f);
 		real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
-
-		mat4 projection;
-		InitPerspective(projection, fovY, aspect, 0.1f, 1000.0f);
-
-		mat4 translation;
-		InitTranslation(translation, vec3{ 0, 0, 3.0f });
-
-		mat4 rotation;
-		InitRotation(rotation, { 0.0f, 1.0f, 0.0f }, ToRadians(val));
-
-		mat4 view;
-		InitTranslation(view, vec3{ 0.0f, 0.0f, -3.0f });
+		//Siiiince we are kind of in immediate mode, here we go!
+		gameState->Scene.ViewMatrix = mat4(1.0f);
+		gameState->Scene.ProjectionMatrix = glm::perspective(fovY, aspect, 0.1f, 1000.0f);
+		mat4 translation = glm::translate(mat4(1.0f), vec3( 0.0f, 0.0f, -3.0f ));
+		mat4 rotation = glm::rotate(mat4(1.0f), glm::radians(val), vec3(0.0f, 1.0f, 0.0f));
+		//InitRotation(rotation, { 0.0f, 1.0f, 0.0f }, ToRadians(val));
 
 		//mvp
 		//row major
-		mat4 transform = rotation * translation * projection;
-
-		v1.Position = transform * v1.Position;
-		v2.Position = transform * v2.Position;
-		v3.Position = transform * v3.Position;
-		
-		RenderTriangle(gameState->pixelBuffer, { v1, v2, v3 });
-
-		//mvp
-		//row major
-		InitTranslation(translation, vec3{ 0, 0, 4.0f });
-
-		v1 = { { -1, -1, 0, 1 }, {}, {} };
-		v2 = { { 0, 1, 0, 1 }, {}, {} };
-		v3 = { { 1, -1, 0, 1 }, {}, {} };
-
-
-		transform = rotation * translation * projection;
+		mat4 transform = gameState->Scene.ProjectionMatrix * translation * rotation;
 
 		v1.Position = transform * v1.Position;
 		v2.Position = transform * v2.Position;
 		v3.Position = transform * v3.Position;
 
-		RenderTriangle(gameState->pixelBuffer, { v1, v2, v3 });
+		Triangle t = { v1, v2, v3 };
+		mat4 tmp = (translation * rotation);
+		RenderTriangle(gameState->pixelBuffer, gameState->Scene.ProjectionMatrix, mat4(1.0f), t);
 
-		
-		DemoInit(gameState, gameMemory);
+		//DemoInit(gameState, gameMemory);
 	}
 }

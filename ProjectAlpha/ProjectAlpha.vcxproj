@@ -68,6 +68,7 @@
   <ItemGroup>
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="project_alpha.cpp" />
+    <ClCompile Include="SoftwareRenderer.cpp" />
     <ClCompile Include="VecMath.cpp" />
   </ItemGroup>
   <ItemGroup>

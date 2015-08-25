@@ -3,7 +3,6 @@
 #include "ctdfs.h"
 #include "Platform.h"
 #include "Memory.h"
-#include "VecMath.h"
 
 using namespace ProjectAlpha;
 

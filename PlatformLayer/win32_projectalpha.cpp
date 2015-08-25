@@ -203,7 +203,7 @@ bool __Win32ReadFile(File file)
 	
 	std::ifstream inFile;
 
-	inFile.open((char*)file.name.text, std::ios::binary);
+	inFile.open((char*)file.name, std::ios::binary);
 
 	std::ifstream::pos_type begin, end;
 	if (inFile.is_open())
@@ -254,7 +254,7 @@ int CALLBACK WinMain(
 
 	//Setup state
 	GameState gameState;
-	gameState.platform.PlatformReadFile = __Win32ReadFile;
+	//gameState.platform.PlatformReadFile = __Win32ReadFile;
 	gameState.pixelBuffer.memory = 0;
 	gameState.pixelBuffer.width = 0;
 	gameState.pixelBuffer.height = 0;

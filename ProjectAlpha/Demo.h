@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ProjectAlpha.h"
-#include "VecMath.h"
 
 inline real32 GetHeight(int32 x, int32 y)
 {
@@ -62,22 +61,23 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 	}
 
 
-	real32 fovY = ToRadians(70);
+	real32 fovY = glm::radians(70.0f);
 	real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
 
 	//Siiiince we are kind of in immediate mode, here we go!
 
-	InitIdentity(gameState->Scene.ViewMatrix);
-	InitPerspective(gameState->Scene.ProjectionMatrix, fovY, aspect, 0.1f, 1000.0f);
+	gameState->Scene.ViewMatrix = mat4(1.0f);
+	gameState->Scene.ProjectionMatrix = glm::perspective(fovY, aspect, 0.1f, 1000.0f);
 
-	mat4 translation;
-	InitTranslation(translation, vec3{ 5.0f, 0.0f, 0.0f });
+	mat4 translation = glm::translate(mat4(1.0f), vec3(5.0f, 0.0f, 0.0f));
 
-	for (uint32 i = 0; i < numIndices; i += 3)
+	for (uint32 i = 0; i < (uint32)numIndices; i += 3)
 	{
 		uint16 idx = indices[i];
 		uint16 idx1 = indices[i + 1];
 		uint16 idx2 = indices[i + 2];
+
+		using namespace Renderer;
 
 		Vertex v1 = { { vertices[idx].x, vertices[idx].y, vertices[idx].z, 1.0 }, {}, {} };
 		Vertex v2 = { { vertices[idx1].x, vertices[idx1].y, vertices[idx1].z, 1.0 }, {}, {} };
@@ -94,7 +94,9 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 		v2.Position = transform * v2.Position;
 		v3.Position = transform * v3.Position;
 
-		RenderTriangle(gameState->pixelBuffer, { v1, v2, v3 });
+		Triangle t = { v1, v2, v3 };
+
+		RenderTriangle(gameState->pixelBuffer, gameState->Scene.ProjectionMatrix, translation, t);
 	}
 
 
