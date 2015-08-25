@@ -177,6 +177,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		__Win32BlitBuffer(backbuffer, hdc, dim); //Copy the rect struct, don't pass it as a pointer
 
 		EndPaint(hwnd, &ps);
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 	break;
 
@@ -276,10 +277,26 @@ int CALLBACK WinMain(
 		gameCode.gameInit(gameMemory, &gameState);
 
 		running = true;
-		int xOffset = 0;
-		int yOffset = 0;
+
+		const int64 ticksPerSecond = 25;
+		const int64 skipTicks = 1000 / ticksPerSecond;
+		const int64 maxFrameskip = 5;
+
+		int64 nextTick = GetTickCount64();
+		int64 loops = 0;
+		real32 interpolation = 0.0f;
+
 		while (running)
 		{
+
+			while (GetTickCount64() > nextTick && loops < maxFrameskip)
+			{
+				//update
+				nextTick = skipTicks;
+				loops++;
+			}
+
+			//Window message parsing
 			MSG msg;
 			while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
 			{
@@ -289,6 +306,9 @@ int CALLBACK WinMain(
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
+
+
+			int64 start = GetTickCount64();
 
 			//Because
 			gameState.pixelBuffer.memory = backbuffer.memory;
@@ -305,7 +325,15 @@ int CALLBACK WinMain(
 			__Win32BlitBuffer(backbuffer, hdc, dim);
 
 			ReleaseDC(window, hdc);			
-			++xOffset;
+
+			//How long did the render op take?
+			int64 delta = GetTickCount64() - start;
+
+			char buf[10];
+			_itoa_s(delta, buf, 10);
+			OutputDebugStringA(buf);
+			OutputDebugStringA("\n");
+			Sleep(max((1000 / 60), 0));
 		}
 	}
 

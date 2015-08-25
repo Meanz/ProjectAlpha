@@ -67,7 +67,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Memory.cpp" />
-    <ClCompile Include="project_alpha.cpp" />
+    <ClCompile Include="ProjectAlpha.cpp" />
     <ClCompile Include="SoftwareRenderer.cpp" />
     <ClCompile Include="VecMath.cpp" />
   </ItemGroup>

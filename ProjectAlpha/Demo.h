@@ -4,7 +4,7 @@
 
 inline real32 GetHeight(int32 x, int32 y)
 {
-	return 1.0f;
+	return 0.0f;
 }
 
 void DemoInit(GameState* gameState, GameMemory* memory)
@@ -34,6 +34,9 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 	{
 		for (int32 y = 0; y < height; y++)
 		{
+			//3--2
+			//|  |
+			//0--1
 
 			//Alloc on stack
 			vec3 v1 = { (real32)x + 1, GetHeight(x + 1, y), (real32)y };
@@ -42,34 +45,32 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 			vec3 v4 = { (real32)x + 1, GetHeight(x + 1, y + 1), (real32)y + 1 };
 
 			//Push to memory
-			uint32 v0 = vertices - vert; //0
+			uint32 v0 = vert - vertices; //0
 			*(vert++) = v1;
 			*(vert++) = v2;
 			*(vert++) = v3;
 			*(vert++) = v4;
 
 			//Indices
-			*(ind++) = (uint16)(v0);
 			*(ind++) = (uint16)(v0 + 1);
 			*(ind++) = (uint16)(v0 + 2);
+			*(ind++) = (uint16)(v0 + 0);
 
 			*(ind++) = (uint16)(v0 + 2);
 			*(ind++) = (uint16)(v0 + 3);
-			*(ind++) = (uint16)(v0);
+			*(ind++) = (uint16)(v0 + 0);
 
 		}
 	}
 
+	static real32 val = 0;
+	val += 0.5f;
+	if (val >= 100) {
+		//val = 0.0f;
+	}
 
-	real32 fovY = glm::radians(70.0f);
-	real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
-
-	//Siiiince we are kind of in immediate mode, here we go!
-
-	gameState->Scene.ViewMatrix = mat4(1.0f);
-	gameState->Scene.ProjectionMatrix = glm::perspective(fovY, aspect, 0.1f, 1000.0f);
-
-	mat4 translation = glm::translate(mat4(1.0f), vec3(5.0f, 0.0f, 0.0f));
+	mat4 translation = glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, 0.0f));
+	mat4 rotation = glm::rotate(mat4(1.0f), glm::radians(val), vec3(1.0f, 0.0f, 0.0f));
 
 	for (uint32 i = 0; i < (uint32)numIndices; i += 3)
 	{
@@ -87,8 +88,7 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 
 		//It should be Model * View * Projection
 		//Let's see if that actually works :D
-		mat4 __pos__ = translation;
-		mat4 transform = __pos__ * gameState->Scene.ProjectionMatrix;
+		mat4 transform = gameState->Scene.ProjectionMatrix * gameState->Scene.ViewMatrix * (translation);
 
 		v1.Position = transform * v1.Position;
 		v2.Position = transform * v2.Position;
@@ -96,7 +96,7 @@ void DemoInit(GameState* gameState, GameMemory* memory)
 
 		Triangle t = { v1, v2, v3 };
 
-		RenderTriangle(gameState->pixelBuffer, gameState->Scene.ProjectionMatrix, translation, t);
+		RenderTriangle(gameState->pixelBuffer, gameState->Scene.ProjectionMatrix, mat4(1.0), t, 0x0000ff00);
 	}
 
 
