@@ -72,7 +72,9 @@ void DemoInit(GameState* state, GameMemory* memory)
 		//Create context
 		Renderer::paCreateContext(memory, state->pixelBuffer.width, state->pixelBuffer.height, 0, &state->pixelBuffer);
 	}
-	Renderer::_paFillRect(0, 0, state->pixelBuffer.width, state->pixelBuffer.height, 0x00ffffff);
+	
+	Renderer::paSetClearColor(0x00ffffff);
+	Renderer::paClear(Renderer::COLOR_BIT | Renderer::DEPTH_BIT);
 
 	static real32 val = 0;
 	val += 0.5f;

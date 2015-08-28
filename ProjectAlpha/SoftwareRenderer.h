@@ -40,14 +40,22 @@ namespace ProjectAlpha
 
 		struct PAContext
 		{
-			PixelBuffer* pixelBuffer;
-			DepthBuffer16 depthBuffer;
-			int32 width;
-			int32 height;
+			PixelBuffer* PixelBuffer;
+			DepthBuffer16 DepthBuffer;
+			int32 Width;
+			int32 Height;
 			bool32 IsCreated;
 
-			mat4 proj;
-			mat4 model;
+			mat4 Projection;
+			mat4 Model;
+
+			uint32 ClearColor;
+		};
+
+		enum
+		{
+			COLOR_BIT = 0x1,
+			DEPTH_BIT = 0x2
 		};
 
 		bool32 paCreateContext(GameMemory* memory, int32 width, int32 height, uint32 flags, PixelBuffer* pixelBuffer);
@@ -55,6 +63,9 @@ namespace ProjectAlpha
 
 		void paSetProjectionMatrix(mat4& proj);
 		void paSetModelMatrix(mat4& model);
+
+		void paSetClearColor(uint32 clearColor);
+		void paClear(uint32 clearFlags);
 
 		real32 Interpolate(real32 min, real32 max, real32 gradient);
 		void _paFillRect(int32 x, int32 y, int32 w, int32 h, uint32 color);
