@@ -11,7 +11,7 @@ struct Win32GameCode
 	GameUpdateAndRender* gameRender;
 };
 
-struct Win32OffscreenBuffer 
+struct Win32OffscreenBuffer
 {
 	BITMAPINFO info;
 	void* memory;
@@ -31,6 +31,106 @@ struct Win32WindowDimension
 
 global_variable bool running = false;
 global_variable Win32OffscreenBuffer backbuffer;
+
+typedef void WorkQueueCallback(PlatformWorkQueue* queue, void* data);
+struct PlatformWorkQueueEntry
+{
+	WorkQueueCallback* Callback;
+	void* Data;
+};
+
+struct PlatformWorkQueue
+{
+	uint32 volatile ComplectionGoal;
+	uint32 volatile CompletionCount;
+
+	uint32 volatile NextEntryToWrite;
+	uint32 volatile NextEntryToRead;
+
+	uint32 maxentryCount;
+	HANDLE semaphoreHandle;
+	PlatformWorkQueueEntry entries[256];
+};
+
+struct Win32ThreadInfo
+{
+	uint32 logicalThreadIndex;
+	PlatformWorkQueue* queue;
+};
+
+void Win32AddEntry(PlatformWorkQueue* queue, WorkQueueCallback* func, void* data)
+{
+	uint32 newNextEntryToWrite = (queue->NextEntryToWrite + 1) % queue->maxentryCount;
+	ASSERT((newNextEntryToWrite != queue->NextEntryToRead));
+	PlatformWorkQueueEntry* entry = queue->entries + queue->NextEntryToWrite;
+	entry->Data = data;
+	entry->Callback = func;
+	++queue->ComplectionGoal;
+	_WriteBarrier();
+	//_mm_sfence(); //RAD Folks said it wasn't needed
+	queue->NextEntryToWrite = newNextEntryToWrite;
+	ReleaseSemaphore(queue->semaphoreHandle, 1, 0);
+}
+
+PLATFORM_WORK_QUEUE_CALLBACK(DoWorkerWork)
+{
+	//Perform actual work
+	char buffer[256];
+	wsprintf(buffer, "Thread %u: %s\n", GetCurrentThreadId(), (char*)data);
+	OutputDebugStringA(buffer);
+}
+
+bool32 Win32DoWorkQueueNextEntry(PlatformWorkQueue* queue)
+{
+	bool32 shouldSleep = false;
+	//Dequeue entry
+	uint32 originalNextEntryToDo = queue->NextEntryToRead;
+	uint32 newNextEntryToDo = (originalNextEntryToDo + 1) % queue->maxentryCount;
+	if (originalNextEntryToDo != queue->NextEntryToWrite)
+	{
+		uint32 index = InterlockedCompareExchange(
+			(LONG volatile *)&queue->NextEntryToRead,
+			newNextEntryToDo,
+			originalNextEntryToDo
+			);
+
+		if (index == originalNextEntryToDo)
+		{
+			PlatformWorkQueueEntry entry = queue->entries[index];
+			entry.Callback(queue, entry.Data);
+			InterlockedIncrement((LONG volatile *)&queue->CompletionCount);
+		}
+	}
+	else
+	{
+		shouldSleep = true;
+	}
+	return(shouldSleep);
+}
+
+void Win32CompleteAllWork(PlatformWorkQueue* queue)
+{
+	while (queue->ComplectionGoal != queue->CompletionCount)
+	{
+		Win32DoWorkQueueNextEntry(queue);
+	};
+
+	queue->ComplectionGoal = 0;
+	queue->CompletionCount = 0;
+}
+
+DWORD WINAPI ThreadProc(LPVOID param)
+{
+	Win32ThreadInfo* threadInfo = (Win32ThreadInfo*)param;
+	for (;;)
+	{
+		if (Win32DoWorkQueueNextEntry(threadInfo->queue))
+		{
+			WaitForSingleObjectEx(threadInfo->queue->semaphoreHandle, INFINITE, FALSE);
+		}
+	}
+	return 0;
+}
 
 //wndproc
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -86,7 +186,7 @@ HWND __Win32CreateWindow(HINSTANCE hInstance, LPCSTR windowName, int32 width, in
 	RegisterClass(&wndclass);
 
 	//Create the window.
-	HWND hwnd = CreateWindowEx(0, className, windowName, WS_OVERLAPPEDWINDOW|WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, hInstance, NULL);
+	HWND hwnd = CreateWindowEx(0, className, windowName, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, hInstance, NULL);
 
 	if (!hwnd) {
 		UnregisterClass(className, hInstance);
@@ -201,7 +301,7 @@ void LoadGameCode(Win32GameCode* gameCode) {
 
 bool __Win32ReadFile(File file)
 {
-	
+
 	std::ifstream inFile;
 
 	inFile.open((char*)file.name, std::ios::binary);
@@ -215,12 +315,12 @@ bool __Win32ReadFile(File file)
 		end = inFile.tellg();
 		inFile.seekg(0, std::ios::beg);
 
-		uint32 size = (uint32) (end - begin);
+		uint32 size = (uint32)(end - begin);
 
 		//We need to alloc some data, luckily we have the memory!
 		//Or maybe we don't, who cares, let's virtual alloc
 		file.data = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-		
+
 		inFile.read((char*)file.data, size);
 
 		inFile.close();
@@ -251,7 +351,8 @@ int CALLBACK WinMain(
 	gameMemory->permanentMemorySize = permanentMemorySize - sizeof(GameMemory);
 	gameMemory->transientMemory = (void*)((uint8*)gameMemory->permanentMemory + gameMemory->permanentMemorySize);
 	gameMemory->transientMemorySize = transientMemorySize;
-	
+
+
 
 	//Setup state
 	GameState gameState;
@@ -272,17 +373,61 @@ int CALLBACK WinMain(
 	Win32GameCode gameCode;
 	LoadGameCode(&gameCode);
 
+	//Threading!
+	const uint32 threadCount = 7;
+	PlatformWorkQueue queue = {};
+	queue.maxentryCount = 256;
+	Win32ThreadInfo threadInfo[threadCount];
+
+	const uint32 initialCount = 0;
+	HANDLE semaphoreHandle = CreateSemaphoreEx(0, initialCount, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS);
+
+	queue.semaphoreHandle = semaphoreHandle;
+
+	//Tell our game memory about these things
+	gameMemory->HighPriorityQueue = &queue;
+	gameMemory->PlatformAddEntry = Win32AddEntry;
+	gameMemory->PlatformCompleteAllWork = Win32CompleteAllWork;
+
+	//MAEK TREDS
+	for (uint32 threadIndex = 0; threadIndex < threadCount; threadIndex++)
+	{
+		Win32ThreadInfo* info = threadInfo + threadIndex;
+		info->logicalThreadIndex = threadIndex;
+		info->queue = &queue;
+
+		DWORD threadId;
+		HANDLE threadHandle = CreateThread(0, 0, ThreadProc, info, 0, &threadId);
+		CloseHandle(threadHandle); //Does not close the thread, only releases the handle
+	}
+
+	Win32AddEntry(&queue, DoWorkerWork, "String A0");
+	Win32AddEntry(&queue, DoWorkerWork, "String A1");
+	Win32AddEntry(&queue, DoWorkerWork, "String A2");
+	Win32AddEntry(&queue, DoWorkerWork, "String A3");
+	Win32AddEntry(&queue, DoWorkerWork, "String A4");
+	Win32AddEntry(&queue, DoWorkerWork, "String A5");
+
+	Sleep(1000);
+
+	Win32AddEntry(&queue, DoWorkerWork, "String A6");
+	Win32AddEntry(&queue, DoWorkerWork, "String A7");
+	Win32AddEntry(&queue, DoWorkerWork, "String A8");
+	Win32AddEntry(&queue, DoWorkerWork, "String A9");
+	
+	Win32CompleteAllWork(&queue);
+
 	if (gameCode.gameRender)
 	{
 		gameCode.gameInit(gameMemory, &gameState);
 
 		running = true;
 
-		const int64 ticksPerSecond = 25;
-		const int64 skipTicks = 1000 / ticksPerSecond;
-		const int64 maxFrameskip = 5;
+		const uint64 ticksPerSecond = 25;
+		const uint64 skipTicks = 1000 / ticksPerSecond;
+		const uint64 maxFrameskip = 5;
 
-		int64 nextTick = GetTickCount64();
+		uint64 nextTick = GetTickCount64();
 		int64 loops = 0;
 		real32 interpolation = 0.0f;
 
@@ -324,7 +469,7 @@ int CALLBACK WinMain(
 			Win32WindowDimension dim = __Win32GetWindowDimension(window);
 			__Win32BlitBuffer(backbuffer, hdc, dim);
 
-			ReleaseDC(window, hdc);			
+			ReleaseDC(window, hdc);
 
 			//How long did the render op take?
 			int64 delta = GetTickCount64() - start;

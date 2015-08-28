@@ -30,16 +30,37 @@ namespace ProjectAlpha
 			uint32 height;
 		};
 
-		struct Renderbuffer
+		struct RenderBuffer
 		{
-			PixelBuffer* PixelBuffer;
-			DepthBuffer16* DepthBuffer;
+			PixelBuffer pixelBuffer;
+			DepthBuffer16 depthBuffer;
+			int32 width;
+			int32 height;
 		};
 
-		void DrawPixel(PixelBuffer pixelBuffer, int32 x, int32 y, uint32 color);
-		void FillRect(PixelBuffer pixelBuffer, int32 x, int32 y, int32 w, int32 h, uint32 color);
+		struct PAContext
+		{
+			PixelBuffer* pixelBuffer;
+			DepthBuffer16 depthBuffer;
+			int32 width;
+			int32 height;
+			bool32 IsCreated;
+
+			mat4 proj;
+			mat4 model;
+		};
+
+		bool32 paCreateContext(GameMemory* memory, int32 width, int32 height, uint32 flags, PixelBuffer* pixelBuffer);
+		bool32 paDestroyContext();
+
+		void paSetProjectionMatrix(mat4& proj);
+		void paSetModelMatrix(mat4& model);
+
 		real32 Interpolate(real32 min, real32 max, real32 gradient);
-		void RasterizeScanLine(PixelBuffer pixelBuffer, int32 y, Vertex& v1, Vertex& v2, Vertex& v3, Vertex& v4, uint32 color);
-		void RenderTriangle(PixelBuffer pixelBuffer, mat4& proj, mat4& model, Triangle& triangle, uint32 color);
+		void _paFillRect(int32 x, int32 y, int32 w, int32 h, uint32 color);
+		void _paRasterizeScanLine(int32 y, Vertex& v1, Vertex& v2, Vertex& v3, Vertex& v4, uint32 color);
+		void paTriangle(Triangle& triangle, uint32 color);
+
+		
 	}
 }

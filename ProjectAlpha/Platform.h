@@ -2,6 +2,8 @@
 
 #include "ctdfs.h"
 
+
+
 struct File
 {
 	char* name;
@@ -12,3 +14,11 @@ struct Platform
 {
 
 };
+
+
+
+
+extern "C"
+{
+
+}

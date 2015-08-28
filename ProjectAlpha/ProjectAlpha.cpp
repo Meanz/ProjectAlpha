@@ -32,17 +32,14 @@ extern "C"
 			gameMemory->permanentMemorySize - sizeof(Memory::MemoryBlock),
 			(void*)((uint8*)gameMemory->permanentMemory + sizeof(Memory::MemoryBlock))
 			);
+
+		PlatformAddEntry = gameMemory->PlatformAddEntry;
+		PlatformCompleteAllWork = gameMemory->PlatformCompleteAllWork;
 	}
 
 	__declspec(dllexport) GameUpdateAndRenderDef(_GameUpdateAndRender) {
 
 		if (gameState->pixelBuffer.memory) {
-
-			//Do bitmap memory modifications
-			Renderer::FillRect(gameState->pixelBuffer, 0, 0, gameState->pixelBuffer.width, gameState->pixelBuffer.height, 0x00ffffff);
-
-			
-
 			static real32 val = 0;
 			val += 0.01f;
 			if (val >= 100) {
@@ -63,31 +60,7 @@ extern "C"
 
 			//MODEL_MATRIX
 
-
 			DemoInit(gameState, gameMemory);
-
-			using namespace Renderer;
-			//Do scan line thingy
-			Vertex v1 = { { -1, -1, 0, 1 }, {}, {} };
-			Vertex v2 = { { 0, 2, 0, 1 }, {}, {} };
-			Vertex v3 = { { 1, -1, 0, 1 }, {}, {} };
-
-			mat4 translation = glm::translate(mat4(1.0f), vec3(2.0f, 0.0f, 0.0f));
-			mat4 rotation = glm::rotate(mat4(1.0f), val, vec3(0.0f, 1.0f, 0.0f));
-
-			//InitRotation(rotation, { 0.0f, 1.0f, 0.0f }, ToRadians(val));
-
-			//mvp
-			//row major
-			mat4 model = (translation * rotation);
-			mat4 transform = gameState->Scene.ProjectionMatrix * gameState->Scene.ViewMatrix * model;
-
-			v1.Position = transform * v1.Position;
-			v2.Position = transform * v2.Position;
-			v3.Position = transform * v3.Position;
-
-			Triangle t = { v1, v2, v3 };
-			RenderTriangle(gameState->pixelBuffer, gameState->Scene.ProjectionMatrix, mat4(1.0f), t, 0x000000ff);
 		}
 	}
 }

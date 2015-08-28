@@ -4,25 +4,40 @@ namespace ProjectAlpha
 {
 	namespace Renderer
 	{
-		void DrawPixel(PixelBuffer pixelBuffer, int32 x, int32 y, uint32 color)
+#define CONTEXT_CHECK ASSERT(!(_Context.IsCreated));
+
+		//Let's go with context based rendering
+		global_variable PAContext _Context;
+
+		bool32 paCreateContext(GameMemory* memory, int32 width, int32 height, uint32 flags, PixelBuffer* pixelBuffer)
 		{
-			((uint32*)pixelBuffer.memory)[x + (y * pixelBuffer.width)] = color;
+			CONTEXT_CHECK
+			//allocate space for the context
+			_Context.width = width;
+			_Context.height = height;
+			_Context.depthBuffer.width = width;
+			_Context.depthBuffer.height = height;
+			_Context.depthBuffer.pixels = (int16*)Memory::MemoryAlloc(memory->memory, sizeof(int16) * width * height);
+			_Context.pixelBuffer = pixelBuffer;
+			return((bool32)true);
 		}
 
-		void FillRect(PixelBuffer pixelBuffer, int32 x, int32 y, int32 w, int32 h, uint32 color)
+		bool32 paDestroyContext(GameMemory* memory)
 		{
-			for (int32 _x = x; _x < x + w; _x++)
-			{
-				for (int32 _y = y; _y < y + h; _y++)
-				{
-					if (_x < 0 || _x >= pixelBuffer.width)
-						break; //discard fragment
-					if (_y < 0 || _y >= pixelBuffer.height)
-						continue; //discard fragment
-					//DrawPixel(pixelBuffer, _x, _y, color);
-					((uint32*)pixelBuffer.memory)[_x + (_y * pixelBuffer.width)] = color;
-				}
-			}
+			ASSERT(!(_Context.IsCreated));
+			Memory::MemoryRelease(memory->memory, (void*)_Context.depthBuffer.pixels);
+			return((bool32)true);
+		}
+
+		void paSetProjectionMatrix(mat4& proj) 
+		{
+			CONTEXT_CHECK
+				_Context.proj = proj;
+		}
+		void paSetModelMatrix(mat4& model)
+		{
+			CONTEXT_CHECK
+				_Context.model = model;
 		}
 
 		real32 Interpolate(real32 min, real32 max, real32 gradient)
@@ -30,9 +45,27 @@ namespace ProjectAlpha
 			return min + (max - min) * glm::clamp(gradient, 0.0f, 1.0f);
 		}
 
-		void RasterizeScanLine(PixelBuffer pixelBuffer, int32 y, Vertex& v1, Vertex& v2, Vertex& v3, Vertex& v4, uint32 color)
+		void _paFillRect(int32 x, int32 y, int32 w, int32 h, uint32 color)
 		{
-			if (y < 0 || y >= pixelBuffer.height)
+			CONTEXT_CHECK
+			for (int32 _x = x; _x < x + w; _x++)
+			{
+				for (int32 _y = y; _y < y + h; _y++)
+				{
+					if (_x < 0 || _x >= _Context.pixelBuffer->width)
+						break; //discard fragment
+					if (_y < 0 || _y >= _Context.pixelBuffer->height)
+						continue; //discard fragment
+					//DrawPixel(pixelBuffer, _x, _y, color);
+					((uint32*)_Context.pixelBuffer->memory)[_x + (_y * _Context.pixelBuffer->width)] = color;
+				}
+			}
+		}
+
+		void _paRasterizeScanLine(int32 y, Vertex& v1, Vertex& v2, Vertex& v3, Vertex& v4, uint32 color)
+		{
+			CONTEXT_CHECK
+			if (y < 0 || y >= _Context.pixelBuffer->height)
 				return; //discard fragment
 
 			real32 gradient1 = (v1.Position.y != v2.Position.y) ? (y - v1.Position.y) / (v2.Position.y - v1.Position.y) : 1;
@@ -41,9 +74,9 @@ namespace ProjectAlpha
 			int32 startX = (int32)Interpolate(v1.Position.x, v2.Position.x, gradient1);
 			int32 endX = (int32)Interpolate(v3.Position.x, v4.Position.x, gradient2);
 
-			for (int32 x = glm::max(startX, 0); x < glm::min(endX, pixelBuffer.width); x++)
+			for (int32 x = glm::max(startX, 0); x < glm::min(endX, _Context.pixelBuffer->width); x++)
 			{
-				((uint32*)pixelBuffer.memory)[x + (y * pixelBuffer.width)] = color;
+				((uint32*)_Context.pixelBuffer->memory)[x + (y * _Context.pixelBuffer->width)] = (uint32)(gradient1 * gradient2 * color);
 			}
 			/*
 			if (!(startX < 0 || startX >= pixelBuffer.width))
@@ -53,7 +86,7 @@ namespace ProjectAlpha
 			*/
 		}
 
-		void RenderTriangle(PixelBuffer pixelBuffer, mat4& proj, mat4& world, Triangle& triangle, uint32 color)
+		void paTriangle(Triangle& triangle, uint32 color)
 		{
 			Vertex v1 = triangle.v1;
 			Vertex v2 = triangle.v2;
@@ -76,10 +109,10 @@ namespace ProjectAlpha
 
 			//TODO(meanzie): Optimize
 			//We also need to look into C++ compiler and pass by reference overhead
-			vec4 viewport = { 0.0f, 0.0f, pixelBuffer.width, pixelBuffer.height };
-			v1.Position = vec4(glm::project(vec3(v1.Position), world, proj, viewport), 1.0f);
-			v2.Position = vec4(glm::project(vec3(v2.Position), world, proj, viewport), 1.0f);
-			v3.Position = vec4(glm::project(vec3(v3.Position), world, proj, viewport), 1.0f);
+			vec4 viewport = { 0.0f, 0.0f, _Context.pixelBuffer->width, _Context.pixelBuffer->height };
+			v1.Position = vec4(glm::project(vec3(v1.Position), _Context.model, _Context.proj, viewport), 1.0f);
+			v2.Position = vec4(glm::project(vec3(v2.Position), _Context.model, _Context.proj, viewport), 1.0f);
+			v3.Position = vec4(glm::project(vec3(v3.Position), _Context.model, _Context.proj, viewport), 1.0f);
 
 			//glm::unProject(vec3(1.0f), model, proj, viewport)
 			if (v1.Position.z < 1.0f)
@@ -113,6 +146,7 @@ namespace ProjectAlpha
 
 			if (v2.Position.y - v1.Position.y > 0)
 			{
+				//dx / dy
 				dV1V2 = (v2.Position.x - v1.Position.x) / (v2.Position.y - v1.Position.y);
 			}
 			else
@@ -136,11 +170,11 @@ namespace ProjectAlpha
 				{
 					if (y < v2.Position.y)
 					{
-						RasterizeScanLine(pixelBuffer, y, v1, v3, v1, v2, color);
+						_paRasterizeScanLine(y, v1, v3, v1, v2, color);
 					}
 					else
 					{
-						RasterizeScanLine(pixelBuffer, y, v1, v3, v2, v3, color);
+						_paRasterizeScanLine(y, v1, v3, v2, v3, color);
 					}
 				}
 			}
@@ -151,11 +185,11 @@ namespace ProjectAlpha
 				{
 					if (y < v2.Position.y)
 					{
-						RasterizeScanLine(pixelBuffer, y, v1, v2, v1, v3, color);
+						_paRasterizeScanLine(y, v1, v2, v1, v3, color);
 					}
 					else
 					{
-						RasterizeScanLine(pixelBuffer, y, v2, v3, v1, v3, color);
+						_paRasterizeScanLine(y, v2, v3, v1, v3, color);
 					}
 				}
 			}

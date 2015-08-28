@@ -6,16 +6,6 @@
 
 using namespace ProjectAlpha;
 
-struct GameMemory
-{
-	uint64 permanentMemorySize;
-	void* permanentMemory;
-	uint64 transientMemorySize;
-	void* transientMemory;
-
-	Memory::Memory memory;
-};
-
 struct PixelBuffer
 {
 	int32 width;
@@ -37,6 +27,33 @@ struct GameState
 	uint64 number;
 	GameScene Scene;
 };
+
+struct PlatformWorkQueue;
+#define PLATFORM_WORK_QUEUE_CALLBACK(name) void name(PlatformWorkQueue* queue, void* data)
+typedef PLATFORM_WORK_QUEUE_CALLBACK(PlatformWorkQueueCallback);
+
+typedef void platform_add_entry(PlatformWorkQueue* queue, PlatformWorkQueueCallback* callback, void* data);
+typedef void platform_complete_all_work(PlatformWorkQueue* queue);
+
+struct GameMemory
+{
+	uint64 permanentMemorySize;
+	void* permanentMemory;
+	uint64 transientMemorySize;
+	void* transientMemory;
+
+	struct PlatformWorkQueue* HighPriorityQueue;
+	struct PlatformWorkQueue* LowPriorityQueue;
+
+	platform_add_entry* PlatformAddEntry;
+	platform_complete_all_work* PlatformCompleteAllWork;
+
+	Memory::Memory memory;
+};
+
+
+global_variable platform_add_entry *PlatformAddEntry;
+global_variable platform_complete_all_work *PlatformCompleteAllWork;
 
 void* mem_alloc(uint32 size);
 void mem_free(uint32 address, uint32 size);

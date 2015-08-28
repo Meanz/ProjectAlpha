@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="win32_projectalpha.cpp">
+    <ClCompile Include="Win32ProjectAlpha.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
