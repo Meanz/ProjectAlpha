@@ -4,6 +4,13 @@ namespace ProjectAlpha
 {
 	namespace Renderer
 	{
+
+#define _MAX(x, y) (x > y ? x : y)
+#define _MIN(x, y) (x > y ? y : x)
+#define _CLAMP(x, minVal, maxVal) _MIN(_MAX(x, minVal), maxVal)
+#define Interpolate(minVal, maxVal, gradient) (minVal + (maxVal - minVal) * _CLAMP(gradient, 0.0f, 1.0f))
+
+
 #define CONTEXT_CHECK ASSERT(!(_Context.IsCreated));
 
 		//Let's go with context based rendering
@@ -13,7 +20,7 @@ namespace ProjectAlpha
 		{
 			CONTEXT_CHECK;
 			//allocate space for the context
-			_Context.Viewport = { 0.0f, 0.0f, pixelBuffer->width, pixelBuffer->height };
+			_Context.Viewport = { 0.0f, 0.0f, (real32)pixelBuffer->width, (real32)pixelBuffer->height };
 			_Context.Modes = 0;
 			_Context.FillMode = FILL;
 			_Context.ClearColor = 0x00ffffff;
@@ -219,11 +226,6 @@ namespace ProjectAlpha
 		void _paRasterizeScanLine(PARenderTileOp* op)
 		{
 
-#define _MAX(x, y) (x > y ? x : y)
-#define _MIN(x, y) (x > y ? y : x)
-#define _CLAMP(x, minVal, maxVal) _MIN(_MAX(x, minVal), maxVal)
-#define Interpolate(minVal, maxVal, gradient) (minVal + (maxVal - minVal) * _CLAMP(gradient, 0.0f, 1.0f))
-
 			CONTEXT_CHECK;
 			if (op->Line.y < 0 || op->Line.y >= _Context.PixelBuffer->height)
 				return; //discard fragment
@@ -309,142 +311,6 @@ namespace ProjectAlpha
 			__paTriangle(triangle.v1, triangle.v2, triangle.v3, color);
 			return;
 #endif
-
-			Vertex v1 = triangle.v1;
-			Vertex v2 = triangle.v2;
-			Vertex v3 = triangle.v3;
-
-			/*
-			mat4 screenSpaceTransform;
-			InitScreenSpace(screenSpaceTransform, pixelBuffer.width / (real32)2, pixelBuffer.height / (real32)2);
-
-			//ScreenSpaceTransform
-			v1.Position = screenSpaceTransform * v1.Position;
-			v2.Position = screenSpaceTransform * v2.Position;
-			v3.Position = screenSpaceTransform * v3.Position;
-
-			//Perspective divide
-			PerspectiveDivide(v1.Position);
-			PerspectiveDivide(v2.Position);
-			PerspectiveDivide(v3.Position);
-			*/
-
-			//TODO(meanzie): Optimize
-			//We also need to look into C++ compiler and pass by reference overhead
-			v1.Position = vec4(glm::project(vec3(v1.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			v2.Position = vec4(glm::project(vec3(v2.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			v3.Position = vec4(glm::project(vec3(v3.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			PerspectiveDivide(v1.Position);
-			PerspectiveDivide(v2.Position);
-			PerspectiveDivide(v3.Position);
-
-			//Sort the triangles by Y values least to most
-
-			//Is no3 smaller than no2 ?
-			if (v3.Position.y < v2.Position.y) {
-				Vertex temp = v3;
-				v3 = v2;
-				v2 = temp;
-			}
-
-			//Is no2 smaller than no1 ?
-			if (v2.Position.y < v1.Position.y) {
-				Vertex temp = v2;
-				v2 = v1;
-				v1 = temp;
-			}
-
-			//Are we sure that nothing changed between no3 and no2?
-			if (v3.Position.y < v2.Position.y) {
-				Vertex temp = v3;
-				v3 = v2;
-				v2 = temp;
-			}
-
-			//Inverse slopes, slope = dy/dx
-			real32 topMiddleSlope, topBottomSlope;
-
-			if (v2.Position.y - v1.Position.y >= 0)
-			{
-				topMiddleSlope = (v2.Position.x - v1.Position.x) / (v2.Position.y - v1.Position.y);
-			}
-			else
-			{
-				topMiddleSlope = 0;
-			}
-
-			if (v3.Position.y - v1.Position.y >= 0)
-			{
-				topBottomSlope = (v3.Position.x - v1.Position.x) / (v3.Position.y - v1.Position.y);
-			}
-			else
-			{
-				topBottomSlope = 0;
-			}
-
-			//Right side triangle
-			//PARenderTileOp _op[16]; //This must change when we change tile count
-			ScanLine line = {};
-			Edge ETB = { &v1, &v3 };
-			Edge ETM = { &v1, &v2 };
-			Edge EMB = { &v2, &v3 };
-
-#define CalcDX(v1, v2, v3) (  ((v2->Position.x - v3->Position.x) * (v1->Position.y - v3->Position.y)) - ( (v1->Position.x - v3->Position.x) * (v2->Position.y - v3->Position.y) ) )
-
-			Vertex* ptrV1 = &v1;
-			Vertex* ptrV2 = &v2;
-			Vertex* ptrV3 = &v3;
-			PARenderTileOp op;
-
-			real32 _oneOverDX = 1.0f / CalcDX(ptrV1, ptrV2, ptrV3);
-			real32 _oneOverDY = -_oneOverDX;
-
-			op.Gradients.Depth[0] = v1.Position.z;
-			op.Gradients.Depth[1] = v2.Position.z;
-			op.Gradients.Depth[2] = v3.Position.z;
-			op.Gradients.DepthXStep = CalcXStep(op.Gradients.Depth, v1.Position.y, v2.Position.y, v3.Position.y, _oneOverDX);
-			op.Gradients.DepthYStep = CalcYStep(op.Gradients.Depth, v1.Position.x, v2.Position.x, v3.Position.x, _oneOverDX);
-
-	
-
-			for (int32 y = (int32)v1.Position.y; y < (int32)v3.Position.y; y++)
-			{
-				op.Tile = &_Context.Tiles[0];
-				//right tri
-				if (topMiddleSlope > topBottomSlope)
-				{
-					line.y = y;
-					line.color = color;
-					if (y < v2.Position.y)
-					{
-						line.l1 = &ETB;
-						line.l2 = &ETM;
-					}
-					else
-					{
-						line.l1 = &ETB;
-						line.l2 = &EMB;
-					}
-				}
-				//Left tri
-				else
-				{
-					line.y = y;
-					line.color = color;
-					if (y < v2.Position.y)
-					{
-						line.l1 = &ETM;
-						line.l2 = &ETB;
-					}
-					else
-					{
-						line.l1 = &EMB;
-						line.l2 = &ETB;
-					}
-				}
-				op.Line = line;
-				_paRasterizeScanLine(&op);
-			}
 		}
 
 		inline real32 TriangleAreaTimesTwo(Vertex& a, Vertex& b, Vertex& c)
@@ -469,16 +335,27 @@ namespace ProjectAlpha
 				right = temp;
 			}
 
-			int yStart = b.v1->Position.y;
-			int yEnd = b.v2->Position.y;
+			int32 yStart = (int32)ceil(b.v1->Position.y);
+			int32 yEnd = (int32)ceil(b.v2->Position.y);
 
-			for (int32 y = yStart; y < yEnd; y++)
+
+			real32 lx = ceil(left.sX);
+			real32 rx = ceil(right.sX);
+
+			for (int32 y = _MAX(yStart, 0); y < _MIN(yEnd, _Context.PixelBuffer->height - 1); y++)
 			{
 				//Draw pixel
-				_paDrawPixel(left.sX, y, 0x00ff0000);
-				_paDrawPixel(right.sX, y, 0x000000ff);
-				//left.step()
-				//right.step()
+				int32 sx = (int32)_MAX(lx, 0);
+				int32 ex = (int32)_MIN(rx, _Context.PixelBuffer->width - 1);
+				uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + sx);
+				for (int32 x = sx; x < ex; x++)
+				{
+					*(pixel++) = (0x00ff0000);
+				}
+				//if (sx < ex)
+				//*(pixel) = 0x00ff0000;
+				lx += left.xStep;
+				rx += right.xStep;
 			}
 		}
 
@@ -508,14 +385,18 @@ namespace ProjectAlpha
 				return;
 			}
 
-			//TODO(meanzie): Optimize
-			//We also need to look into C++ compiler and pass by reference overhead
-			v1.Position = vec4(glm::project(vec3(v1.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			v2.Position = vec4(glm::project(vec3(v2.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			v3.Position = vec4(glm::project(vec3(v3.Position), _Context.Model, _Context.Projection, _Context.Viewport), 1.0f);
-			PerspectiveDivide(v1.Position);
-			PerspectiveDivide(v2.Position);
-			PerspectiveDivide(v3.Position);
+			mat4 screenSpaceTransform;
+			InitScreenSpace(screenSpaceTransform, _Context.Width / (real32)2.0, _Context.Height / (real32)2.0);
+
+			//ScreenSpaceTransform
+			v1.Position = screenSpaceTransform * v1.Position;
+			v2.Position = screenSpaceTransform * v2.Position;
+			v3.Position = screenSpaceTransform * v3.Position;
+
+			//Perspective divide
+			PerspectiveDivide(&v1.Position);
+			PerspectiveDivide(&v2.Position);
+			PerspectiveDivide(&v3.Position);
 
 			//Sort the triangles by Y values least to most
 

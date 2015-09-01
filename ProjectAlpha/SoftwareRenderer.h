@@ -2,7 +2,6 @@
 
 #include "ProjectAlpha.h"
 #include "ctdfs.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace ProjectAlpha
 {

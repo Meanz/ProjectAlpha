@@ -49,13 +49,17 @@ extern "C"
 			//Initialize Matrices
 
 			//PROJECTION_MATRIX
-			real32 fovY = glm::radians(70.0f);
+			real32 fovY = ToRadians(70.0f);
 			real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
-			gameState->Scene.ProjectionMatrix = glm::perspective(fovY, aspect, 0.1f, 1000.0f);
+			InitPerspective(gameState->Scene.ProjectionMatrix, fovY, aspect, 0.1f, 1000.0f);
 
 			//VIEW_MATRIX
-			mat4 _cTrans = glm::translate(mat4(1.0f), vec3(0.0f, -1.0f, -10.0f));
-			mat4 _cRot = glm::rotate(mat4(1.0f), (2.0f*Pi32) * 0.2f - val, vec3(1.0f, 0.0f, 0.0f));
+			mat4 _cTrans;
+			InitTranslation(_cTrans, vec3(0.0f, -1.0f, -10.0f));
+
+			mat4 _cRot;
+			InitRotation(_cRot, vec3(1.0f, 0.0f, 0.0f), (2.0f*Pi32) * 0.2f - val);
+
 			gameState->Scene.ViewMatrix = (_cRot * _cTrans);
 
 			//MODEL_MATRIX

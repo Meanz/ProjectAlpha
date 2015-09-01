@@ -84,14 +84,15 @@ void DemoInit(GameState* state, GameMemory* memory)
 		//val = 0.0f;
 	}
 
-	mat4 translation = glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, 0.0f));
-	mat4 rotation = glm::rotate(mat4(1.0f), glm::radians(val), vec3(1.0f, 0.0f, 0.0f));
+	mat4 translation;
+	InitTranslation(translation, vec3(0.0f, 0.0f, 0.0f));
+	mat4 rotation;
+	InitRotation(rotation, vec3(1.0f, 0.0f, 0.0f), ToRadians(val));
 
 	for (uint32 i = 0; i < (uint32)numIndices; i += 3)
 	{
 		uint16 idx = demoData.indices[i];
 		uint16 idx1 = demoData.indices[i + 1];
-
 		uint16 idx2 = demoData.indices[i + 2];
 
 		using namespace Renderer;
@@ -112,9 +113,10 @@ void DemoInit(GameState* state, GameMemory* memory)
 
 		Triangle t = { v1, v2, v3 };
 
-
 		paSetProjectionMatrix(state->Scene.ProjectionMatrix);
-		paSetModelMatrix(mat4(1.0f));
+		mat4 id;
+		InitIdentity(id);
+		paSetModelMatrix(id);
 		paTriangle(t, 0x0000ff00);
 	}
 
