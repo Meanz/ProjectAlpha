@@ -220,8 +220,8 @@ void __Win32ResizeDIBSection(Win32OffscreenBuffer* buffer, int32 width, int32 he
 	buffer->width = width;
 	buffer->height = height;
 	buffer->bytesPerPixel = 4;
-	buffer->memorySize = (width * height) * buffer->bytesPerPixel;
-	buffer->stride = (width * buffer->bytesPerPixel);
+	buffer->stride = Align16(width * buffer->bytesPerPixel);
+	buffer->memorySize = buffer->stride * buffer->height;
 
 	buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
 	buffer->info.bmiHeader.biWidth = width;
@@ -437,8 +437,35 @@ int CALLBACK WinMain(
 			while (GetTickCount64() > nextTick && loops < maxFrameskip)
 			{
 				//update
+				int64 start = GetTickCount64();
+
+				//Because
+				gameState.pixelBuffer.memory = backbuffer.memory;
+				gameState.pixelBuffer.width = backbuffer.width;
+				gameState.pixelBuffer.height = backbuffer.height;
+				gameState.pixelBuffer.size = backbuffer.memorySize;
+
+				//Do modifications of our pixel buffer
+				gameCode.gameRender(gameMemory, &gameState);
+
+				//Blit the pixelbuffer to the screen
+				HDC hdc = GetDC(window);
+				Win32WindowDimension dim = __Win32GetWindowDimension(window);
+				__Win32BlitBuffer(backbuffer, hdc, dim);
+
+				ReleaseDC(window, hdc);
+
+				//How long did the render op take?
+				int64 delta = GetTickCount64() - start;
+
+				char buf[10];
+				_itoa_s(delta, buf, 10);
+				OutputDebugStringA(buf);
+				OutputDebugStringA("\n");
+				
+
 				nextTick = skipTicks;
-				loops++;
+				//loops++;
 			}
 
 			//Window message parsing
@@ -452,33 +479,7 @@ int CALLBACK WinMain(
 				DispatchMessage(&msg);
 			}
 
-
-			int64 start = GetTickCount64();
-
-			//Because
-			gameState.pixelBuffer.memory = backbuffer.memory;
-			gameState.pixelBuffer.width = backbuffer.width;
-			gameState.pixelBuffer.height = backbuffer.height;
-			gameState.pixelBuffer.size = backbuffer.memorySize;
-
-			//Do modifications of our pixel buffer
-			gameCode.gameRender(gameMemory, &gameState);
-
-			//Blit the pixelbuffer to the screen
-			HDC hdc = GetDC(window);
-			Win32WindowDimension dim = __Win32GetWindowDimension(window);
-			__Win32BlitBuffer(backbuffer, hdc, dim);
-
-			ReleaseDC(window, hdc);
-
-			//How long did the render op take?
-			int64 delta = GetTickCount64() - start;
-
-			char buf[10];
-			_itoa_s(delta, buf, 10);
-			OutputDebugStringA(buf);
-			OutputDebugStringA("\n");
-			Sleep(max((1000 / 60), 0));
+			Sleep(1);
 		}
 	}
 

@@ -75,6 +75,8 @@ void DemoInit(GameState* state, GameMemory* memory)
 	
 	Renderer::paSetClearColor(0x00ffffff);
 	Renderer::paClear(Renderer::COLOR_BIT | Renderer::DEPTH_BIT);
+	Renderer::paSetFillMode(Renderer::FILL);
+	Renderer::paEnable(Renderer::PA_DEPTH_TEST);
 
 	static real32 val = 0;
 	val += 0.5f;
