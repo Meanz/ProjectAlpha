@@ -210,9 +210,9 @@ namespace ProjectAlpha
 
 		void InitOrthographic(mat4& mat, real32 left, real32 right, real32 bottom, real32 top, real32 near, real32 far)
 		{
-			float width = right - left;
-			float height = top - bottom;
-			float depth = far - near;
+			real32 width = right - left;
+			real32 height = top - bottom;
+			real32 depth = far - near;
 
 			m(0, 0) = 2 / width; m(0, 1) = 0;	m(0, 2) = 0;	m(0, 3) = -(right + left) / width;
 			m(1, 0) = 0;	m(1, 1) = 2 / height; m(1, 2) = 0;	m(1, 3) = -(top + bottom) / height;

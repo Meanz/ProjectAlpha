@@ -310,7 +310,7 @@ namespace ProjectAlpha
 
 		inline bool32 IsInsideViewFrustum(vec4 m_pos)
 		{
-			return (bool32)(abs(m_pos.y) <= abs(m_pos.w) &&
+			return (bool32)(abs(m_pos.x) <= abs(m_pos.w) &&
 				abs(m_pos.y) <= abs(m_pos.w) &&
 				abs(m_pos.z) <= abs(m_pos.w));
 		}
@@ -324,7 +324,7 @@ namespace ProjectAlpha
 			triangle.v2.Position = _Context.Projection * _Context.View * triangle.v2.Position;
 			triangle.v3.Position = _Context.Projection * _Context.View * triangle.v3.Position;
 
-			//if (IsInsideViewFrustum(triangle.v1.Position) && IsInsideViewFrustum(triangle.v2.Position) && IsInsideViewFrustum(triangle.v3.Position))
+			if (!IsInsideViewFrustum(triangle.v1.Position) && !IsInsideViewFrustum(triangle.v2.Position) && !IsInsideViewFrustum(triangle.v3.Position))
 			{
 				__paTriangle(triangle.v1, triangle.v2, triangle.v3, color);
 			}
@@ -332,55 +332,77 @@ namespace ProjectAlpha
 
 		inline real32 TriangleAreaTimesTwo(Vertex& a, Vertex& b, Vertex& c)
 		{
-			float x1 = b.Position.x - a.Position.x;
-			float y1 = b.Position.y - a.Position.y;
+			real32 x1 = b.Position.x - a.Position.x;
+			real32 y1 = b.Position.y - a.Position.y;
 
-			float x2 = c.Position.x - a.Position.x;
-			float y2 = c.Position.y - a.Position.y;
+			real32 x2 = c.Position.x - a.Position.x;
+			real32 y2 = c.Position.y - a.Position.y;
 
 			return (x1 * y2 - x2 * y1);
 		}
 
-		void __paScanEdges(Edge a, Edge b, bool32 handedness)
+		void __paScanEdges(Edge& a, Edge& b, bool32 handedness)
 		{
-			Edge left = a;
-			Edge right = b;
-			if (handedness)
-			{
-				Edge temp = left;
-				left = right;
-				right = temp;
+			Edge& left = handedness ? b : a;
+			Edge& right = handedness ? a : b;
+			int32 yStart = (int32)_MAX(ceil(b.v1->Position.y), 0);
+			int32 yEnd = (int32)_MIN(ceil(b.v2->Position.y), _Context.PixelBuffer->height);
+
+			//Draw point
+#if 0
+			int32 pointSize = 3;
+			int32 xMin = (int32)_MAX(ceil(left.sX), 0);
+			int32 xMax = (int32)_MIN(ceil(right.sX), _Context.PixelBuffer->width);
+
+			for (int32 x = xMin - pointSize; x < xMin + pointSize; x++){
+				for (int32 y = yStart - pointSize; y < yStart + pointSize; y++)
+				{
+
+					if (x < 0 || x >= _Context.Width || y < 0 || y >= _Context.Height)
+						continue;
+					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + x)) = 0x000000ff;
+				}
 			}
 
-			int32 yStart = (int32)ceil(b.v1->Position.y);
-			int32 yEnd = (int32)ceil(b.v2->Position.y);
-
-
-			real32 lx = ceil(left.sX);
-			real32 rx = ceil(right.sX);
-
-			for (int32 y = _MAX(yStart, 0); y < _MIN(yEnd, _Context.PixelBuffer->height - 1); y++)
+			xMax = (int32)_MIN(ceil(right.sX + (right.xStep * (yEnd - yStart))), _Context.PixelBuffer->width);
+			for (int32 x = xMax - pointSize; x < xMax + pointSize; x++){
+				for (int32 y = yEnd - pointSize; y < yEnd + pointSize; y++)
+				{
+					if (x < 0 || x >= _Context.Width || y < 0 || y >= _Context.Height)
+						continue;
+					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + x)) = 0x0055ff55;
+				}
+			}
+#endif
+			for (int32 y = yStart; y < yEnd; y++)
 			{
 				//Draw pixel
-				int32 sx = (int32)_MAX(lx, 0);
-				int32 ex = (int32)_MIN(rx, _Context.PixelBuffer->width - 1);
-				uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + sx);
-				for (int32 x = sx; x < ex; x++)
+				int32 xMin = (int32)_MAX(ceil(left.sX), 0);
+				int32 xMax = (int32)_MIN(ceil(right.sX), _Context.PixelBuffer->width);
+
+				uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
+				for (int32 x = xMin; x < xMax; x++)
 				{
-					//*(pixel++) = (0x00ff0000);
+					if (*pixel != _Context.ClearColor)
+					{
+						pixel++;
+						continue;
+					}
+					*(pixel++) = (0x00ff0000);
 				}
-				if (sx <= ex)
+				//if (xMin <= xMax)
 				{
-					*(pixel) = 0x00ff0000;
-					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + ex)) = 0x0000ff00;
+					//*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin)) = 0x000000ff;
+					//*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMax)) = 0x00ff0000;
 				}
 
-				lx += left.xStep;
-				rx += right.xStep;
+				//Left.Step(), Right.Step()
+				left.sX += left.xStep;
+				right.sX += right.xStep;
 			}
 		}
 
-		inline void CalculateEdge(Edge& e)
+		void CalculateEdge(Edge& e)
 		{
 			real32 yStart = ceil(e.v1->Position.y);
 			real32 yEnd = ceil(e.v2->Position.y);
@@ -389,7 +411,7 @@ namespace ProjectAlpha
 			real32 yPrestep = yStart - e.v1->Position.y;
 
 			e.xStep = xDist / yDist;
-			e.sX = e.v1->Position.x + yPrestep * e.xStep;
+			e.sX = e.v1->Position.x + (yPrestep * e.xStep);
 
 			real32 xPrestep = e.sX - e.v1->Position.x;
 		}
@@ -397,7 +419,7 @@ namespace ProjectAlpha
 		void PerspectiveDivide(v4* vec)
 		{
 			//If w is 0 then we have a problem :P
-			ASSERT( (vec->w != 0) );
+			if (vec->w == 0) return;
 			vec->x /= vec->w;
 			vec->y /= vec->w;
 			vec->z /= vec->w;
@@ -416,7 +438,7 @@ namespace ProjectAlpha
 			}
 
 			mat4 screenSpaceTransform;
-			InitScreenSpace(screenSpaceTransform, _Context.Width / (real32)2.0, _Context.Height / (real32)2.0);
+			InitScreenSpace(screenSpaceTransform, _Context.Width / 2, _Context.Height / 2);
 
 			//ScreenSpaceTransform
 			v1.Position = screenSpaceTransform * v1.Position;

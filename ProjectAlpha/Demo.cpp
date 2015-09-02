@@ -115,7 +115,6 @@ void DemoInit(GameState* state, GameMemory* memory)
 		Triangle t = { v1, v2, v3 };
 
 		paTriangle(t, 0x0000ff00);
-
 	}
 
 

@@ -148,7 +148,7 @@ namespace ProjectAlpha
 		void _paRasterizeScanLine(PARenderTileOp* op);
 		void paTriangle(Triangle& triangle, uint32 color);
 
-		void __paScanEdges(Edge a, Edge b, bool32 handedness);
+		void __paScanEdges(Edge& a, Edge& b, bool32 handedness);
 		void __paTriangle(Vertex& v1, Vertex& v2, Vertex& v3, uint32 color);
 
 		
