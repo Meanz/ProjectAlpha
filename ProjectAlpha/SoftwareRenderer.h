@@ -62,6 +62,7 @@ namespace ProjectAlpha
 			vec4 Viewport;
 			mat4 Projection;
 			mat4 Model;
+			mat4 View;
 
 			uint32 Modes;
 
@@ -129,6 +130,7 @@ namespace ProjectAlpha
 
 		void paSetProjectionMatrix(mat4& proj);
 		void paSetModelMatrix(mat4& model);
+		void paSetViewMatrix(mat4& view);
 
 		//enable,disable
 		void paEnable(uint32 mode);

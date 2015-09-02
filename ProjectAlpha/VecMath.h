@@ -32,7 +32,7 @@ namespace ProjectAlpha
 			real32 y;
 			real32 z;
 
-			v3() {}
+			v3() : x(0.0f), y(0.0f), z(0.0f) {}
 			v3(real32 _x, real32 _y, real32 _z) : x(_x), y(_y), z(_z) {}
 
 			v3 operator/(const real32& by);
@@ -52,7 +52,7 @@ namespace ProjectAlpha
 			real32 z;
 			real32 w;
 			
-			v4() {}
+			v4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
 			v4(real32 _x, real32 _y, real32 _z, real32 _w) : x(_x), y(_y), z(_z), w(_w) {}
 
 			v4 operator/(const real32& by);
@@ -74,6 +74,14 @@ namespace ProjectAlpha
 			//column major
 			real32 values[16];
 
+			mat4() {
+				for (int32 i = 0; i < 16; i++) values[i] = 0.0f;
+				values[0] = 1.0f;
+				values[5] = 1.0f;
+				values[10] = 1.0f;
+				values[15] = 1.0f;
+			}
+
 			mat4 operator*(const mat4& other);
 			v4 operator*(const v4& vec);
 		};
@@ -85,15 +93,6 @@ namespace ProjectAlpha
 			vec.z /= w;
 		}
 
-		inline void PerspectiveDivide(v4* vec)
-		{
-			//If w is 0 then we have a problem :P
-			ASSERT(vec->w != 0);
-			vec->x /= vec->w;
-			vec->y /= vec->w;
-			vec->z /= vec->w;
-		}
-
 		void InitIdentity(mat4& mat);
 		void InitScreenSpace(mat4& mat, real32 halfWidth, real32 halfHeight);
 		void InitTranslation(mat4& mat, v3 vec);
@@ -102,6 +101,10 @@ namespace ProjectAlpha
 		void InitPerspective(mat4& mat, real32 fov, real32 aspect, real32 zNear, real32 zFar);
 		void InitOrthographic(mat4& mat, real32 left, real32 right, real32 bottom, real32 top, real32 near, real32 far);
 		void InitLookAt(mat4& mat, v3 eye, v3 center, v3 up);
+
+		void Translate(mat4& mat, v3 v);
+		void TranslateNoScale(mat4& mat, v3 v);
+
 
 		inline real32 ToRadians(real32 deg)
 		{

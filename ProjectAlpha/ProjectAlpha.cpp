@@ -41,7 +41,7 @@ extern "C"
 
 		if (gameState->pixelBuffer.memory) {
 			static real32 val = 0;
-			val += 0.01f;
+			val += 0.001f;
 			if (val >= 100) {
 				//val = 0.0f;
 			}
@@ -51,16 +51,18 @@ extern "C"
 			//PROJECTION_MATRIX
 			real32 fovY = ToRadians(70.0f);
 			real32 aspect = (real32)gameState->pixelBuffer.width / (real32)gameState->pixelBuffer.height;
-			InitPerspective(gameState->Scene.ProjectionMatrix, fovY, aspect, 0.1f, 1000.0f);
+			InitPerspective(gameState->Scene.ProjectionMatrix, fovY, aspect, 1.0f, 1000.0f);
 
 			//VIEW_MATRIX
 			mat4 _cTrans;
-			InitTranslation(_cTrans, vec3(0.0f, -1.0f, -10.0f));
+			InitTranslation(_cTrans, vec3(0.0f, 5.0f, -15.0f));
 
 			mat4 _cRot;
-			InitRotation(_cRot, vec3(1.0f, 0.0f, 0.0f), (2.0f*Pi32) * 0.2f - val);
+			InitRotation(_cRot, vec3(1.0f, 0.0f, 0.0f), (2.0f*Pi32) * 0.2f - 1.25f);
 
-			gameState->Scene.ViewMatrix = (_cRot * _cTrans);
+			//gameState->Scene.ViewMatrix = (_cRot * _cTrans);
+			InitLookAt(gameState->Scene.ViewMatrix, v3(10.0f, 13.0f, 10.0f), v3(5.0f, 1.0f, 5.0f), v3(0.0f, 1.0f, 0.0f));
+
 
 			//MODEL_MATRIX
 

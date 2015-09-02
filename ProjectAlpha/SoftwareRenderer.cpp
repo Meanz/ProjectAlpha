@@ -148,6 +148,11 @@ namespace ProjectAlpha
 			CONTEXT_CHECK;
 			_Context.Model = model;
 		}
+		void paSetViewMatrix(mat4& view)
+		{
+			CONTEXT_CHECK;
+			_Context.View = view;
+		}
 
 		void paEnable(uint32 mode)
 		{
@@ -240,8 +245,8 @@ namespace ProjectAlpha
 			int32 endX = (int32)Interpolate(op->Line.l2->v1->Position.x, op->Line.l2->v2->Position.x, gradient2);
 
 			//Start end Z values
-			#define startZ ((real32)Interpolate(op->Line.l1->v1->Position.z, op->Line.l1->v2->Position.z, gradient1))
-			#define endZ ((real32)Interpolate(op->Line.l2->v1->Position.z, op->Line.l2->v2->Position.z, gradient2))
+#define startZ ((real32)Interpolate(op->Line.l1->v1->Position.z, op->Line.l1->v2->Position.z, gradient1))
+#define endZ ((real32)Interpolate(op->Line.l2->v1->Position.z, op->Line.l2->v2->Position.z, gradient2))
 
 			//left.GetDepth()
 			//calc pixel gradient
@@ -258,7 +263,7 @@ namespace ProjectAlpha
 					{
 						//check depth buffer
 						if (depth < _Context.DepthBuffer.pixels[x + (op->Line.y * _Context.DepthBuffer.width)])
-						{						
+						{
 							//Depth write
 							_Context.DepthBuffer.pixels[x + (op->Line.y * _Context.DepthBuffer.width)] = depth;
 						}
@@ -268,7 +273,7 @@ namespace ProjectAlpha
 
 					//Pixel write
 					*(pixel++) = (uint32)(gradient1 * gradient2 * op->Line.color);
-					
+
 				}
 			}
 			else
@@ -303,14 +308,26 @@ namespace ProjectAlpha
 				(midYVert - maxYVert))) * oneOverDY;
 		}
 
+		inline bool32 IsInsideViewFrustum(vec4 m_pos)
+		{
+			return (bool32)(abs(m_pos.y) <= abs(m_pos.w) &&
+				abs(m_pos.y) <= abs(m_pos.w) &&
+				abs(m_pos.z) <= abs(m_pos.w));
+		}
+
 		void paTriangle(Triangle& triangle, uint32 color)
 		{
 			CONTEXT_CHECK;
 
-#if 1
-			__paTriangle(triangle.v1, triangle.v2, triangle.v3, color);
-			return;
-#endif
+			//Perform vertex transformation
+			triangle.v1.Position = _Context.Projection * _Context.View * triangle.v1.Position;
+			triangle.v2.Position = _Context.Projection * _Context.View * triangle.v2.Position;
+			triangle.v3.Position = _Context.Projection * _Context.View * triangle.v3.Position;
+
+			//if (IsInsideViewFrustum(triangle.v1.Position) && IsInsideViewFrustum(triangle.v2.Position) && IsInsideViewFrustum(triangle.v3.Position))
+			{
+				__paTriangle(triangle.v1, triangle.v2, triangle.v3, color);
+			}
 		}
 
 		inline real32 TriangleAreaTimesTwo(Vertex& a, Vertex& b, Vertex& c)
@@ -350,10 +367,14 @@ namespace ProjectAlpha
 				uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + sx);
 				for (int32 x = sx; x < ex; x++)
 				{
-					*(pixel++) = (0x00ff0000);
+					//*(pixel++) = (0x00ff0000);
 				}
-				//if (sx < ex)
-				//*(pixel) = 0x00ff0000;
+				if (sx <= ex)
+				{
+					*(pixel) = 0x00ff0000;
+					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + ex)) = 0x0000ff00;
+				}
+
 				lx += left.xStep;
 				rx += right.xStep;
 			}
@@ -371,6 +392,15 @@ namespace ProjectAlpha
 			e.sX = e.v1->Position.x + yPrestep * e.xStep;
 
 			real32 xPrestep = e.sX - e.v1->Position.x;
+		}
+
+		void PerspectiveDivide(v4* vec)
+		{
+			//If w is 0 then we have a problem :P
+			ASSERT( (vec->w != 0) );
+			vec->x /= vec->w;
+			vec->y /= vec->w;
+			vec->z /= vec->w;
 		}
 
 		void __paTriangle(Vertex& _v1, Vertex& _v2, Vertex& _v3, uint32 color)

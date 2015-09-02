@@ -66,7 +66,7 @@ namespace ProjectAlpha
 
 		real32 Length(v3 v1)
 		{
-			return sqrt((v1.x * v1.x) + (v1.y * v1.y) * (v1.z * v1.z));
+			return sqrt((v1.x * v1.x) + (v1.y * v1.y) + (v1.z * v1.z));
 		}
 
 		real32 Dist(v3 v1, v3 v2)
@@ -76,10 +76,10 @@ namespace ProjectAlpha
 
 		v3 Normalize(v3 in)
 		{
-			real32 len = Length(in);
-			return v3(in.x /= len,
-				in.y /= len,
-				in.z /= len);
+			real32 len = 1.0f / Length(in);
+			return v3(in.x *= len,
+				in.y *= len,
+				in.z *= len);
 		}
 
 		//Vec4 functions
@@ -101,7 +101,7 @@ namespace ProjectAlpha
 
 		real32 Length(v4 v1)
 		{
-			return sqrt((v1.x * v1.x) + (v1.y * v1.y) * (v1.z * v1.z));
+			return sqrt((v1.x * v1.x) + (v1.y * v1.y) + (v1.z * v1.z));
 		}
 
 		v4 Cross(v4 v1, v4 v2)
@@ -135,10 +135,10 @@ namespace ProjectAlpha
 			{
 				for (int j = 0; j < 4; j++)
 				{
-					m(i, j) = l(i, 0) * r(0, j) +
-						l(i, 1) * r(1, j) +
-						l(i, 2) * r(2, j) +
-						l(i, 3) * r(3, j);
+					m(i, j) =   l(i, 0) * r(0, j) +
+								l(i, 1) * r(1, j) +
+								l(i, 2) * r(2, j) +
+								l(i, 3) * r(3, j);
 				}
 			}
 			return mat;
@@ -164,7 +164,7 @@ namespace ProjectAlpha
 		void InitScreenSpace(mat4& mat, real32 halfWidth, real32 halfHeight)
 		{
 			m(0, 0) = halfWidth;	m(0, 1) = 0;	m(0, 2) = 0;	m(0, 3) = halfWidth - 0.5f;
-			m(1, 0) = 0;	m(1, 1) = -halfHeight;	m(1, 2) = 0;	m(1, 3) = halfHeight - 0.5f;
+			m(1, 0) = 0;	m(1, 1) = halfHeight;	m(1, 2) = 0;	m(1, 3) = halfHeight - 0.5f;
 			m(2, 0) = 0;	m(2, 1) = 0;	m(2, 2) = 1;	m(2, 3) = 0;
 			m(3, 0) = 0;	m(3, 1) = 0;	m(3, 2) = 0;	m(3, 3) = 1;
 		}
@@ -189,10 +189,10 @@ namespace ProjectAlpha
 
 		void InitScale(mat4& mat, v3 scale)
 		{
-			m(0, 0) = scale.x;	m(0, 1) = 0;	m(0, 2) = 0;	m(0, 3) = 0;
-			m(1, 0) = 0;	m(1, 1) = scale.y;	m(1, 2) = 0;	m(1, 3) = 0;
-			m(2, 0) = 0;	m(2, 1) = 0;	m(2, 2) = scale.z;	m(2, 3) = 0;
-			m(3, 0) = 0;	m(3, 1) = 0;	m(3, 2) = 0;	m(3, 3) = 1;
+			m(0, 0) = scale.x;	m(0, 1) = 0;		m(0, 2) = 0;		m(0, 3) = 0;
+			m(1, 0) = 0;		m(1, 1) = scale.y;	m(1, 2) = 0;		m(1, 3) = 0;
+			m(2, 0) = 0;		m(2, 1) = 0;		m(2, 2) = scale.z;	m(2, 3) = 0;
+			m(3, 0) = 0;		m(3, 1) = 0;		m(3, 2) = 0;		m(3, 3) = 1;
 		}
 
 		void InitPerspective(mat4& mat, real32 fov, real32 aspect, real32 zNear, real32 zFar)
@@ -200,10 +200,12 @@ namespace ProjectAlpha
 			real32 tanHalfFOV = (real32)tan(fov / 2);
 			real32 zRange = zNear - zFar;
 
-			m(0, 0) = 1.0f / (tanHalfFOV * aspect);	m(0, 1) = 0;					m(0, 2) = 0;	m(0, 3) = 0;
-			m(1, 0) = 0;						m(1, 1) = 1.0f / tanHalfFOV;	m(1, 2) = 0;	m(1, 3) = 0;
-			m(2, 0) = 0;						m(2, 1) = 0;					m(2, 2) = (-zNear - zFar) / zRange;	m(2, 3) = 2 * zFar * zNear / zRange;
-			m(3, 0) = 0;						m(3, 1) = 0;					m(3, 2) = 1;	m(3, 3) = 0;
+			m(0, 0) = 1.0f / (tanHalfFOV * aspect);	m(0, 1) = 0;					m(0, 2) = 0;						m(0, 3) = 0;
+			m(1, 0) = 0;							m(1, 1) = 1.0f / tanHalfFOV;	m(1, 2) = 0;						m(1, 3) = 0;
+			m(2, 0) = 0;							m(2, 1) = 0;					m(2, 2) = (-zNear - zFar) / zRange;	m(2, 3) = 2 * zFar * zNear / zRange;
+			m(3, 0) = 0;							m(3, 1) = 0;					m(3, 2) = 1;						m(3, 3) = 0;
+		
+			if (true) return;
 		}
 
 		void InitOrthographic(mat4& mat, real32 left, real32 right, real32 bottom, real32 top, real32 near, real32 far)
@@ -220,25 +222,41 @@ namespace ProjectAlpha
 
 		void InitLookAt(mat4& mat, v3 eye, v3 center, v3 up)
 		{
+			InitIdentity(mat);
 			v3 f = Normalize(center - eye);
 			v3 u = Normalize(up);
 			v3 s = Normalize(Cross(f, u));
 			u = Cross(s, f);
 
 			m(0, 0) = s.x;
-			m(1, 0) = s.y;
-			m(2, 0) = s.z;
+			m(0, 1) = s.y;
+			m(0, 2) = s.z;
 
-			m(0, 1) = u.x;
+			m(1, 0) = u.x;
 			m(1, 1) = u.y;
-			m(2, 1) = u.z;
+			m(1, 2) = u.z;
 
-			m(0, 2) = -f.x;
-			m(1, 2) = -f.y;
+			m(2, 0) = -f.x;
+			m(2, 1) = -f.y;
 			m(2, 2) = -f.z;
 
 
-			//translate(mat, v3(-eye.x, -eye.y, -eye.z));
+			Translate(mat, v3(-eye.x, -eye.y, -eye.z));
+		}
+
+		void Translate(mat4& mat, v3 vec)
+		{
+			m(0, 3) += m(0, 0) * vec.x + m(0, 1) * vec.y + m(0, 2) * vec.z;
+			m(1, 3) += m(1, 0) * vec.x + m(1, 1) * vec.y + m(1, 2) * vec.z;
+			m(2, 3) += m(2, 0) * vec.x + m(2, 1) * vec.y + m(2, 2) * vec.z;
+			m(3, 3) += m(3, 0) * vec.x + m(3, 1) * vec.y + m(3, 2) * vec.z;
+		}
+
+		void TranslateNoScale(mat4& mat, v3 v)
+		{
+			m(3, 0) += v.x;
+			m(3, 1) += v.y;
+			m(3, 2) += v.z;
 		}
 
 	}

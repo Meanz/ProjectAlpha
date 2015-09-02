@@ -79,7 +79,7 @@ void DemoInit(GameState* state, GameMemory* memory)
 	Renderer::paEnable(Renderer::PA_DEPTH_TEST);
 
 	static real32 val = 0;
-	val += 0.5f;
+	//val += 0.5f;
 	if (val >= 100) {
 		//val = 0.0f;
 	}
@@ -89,13 +89,20 @@ void DemoInit(GameState* state, GameMemory* memory)
 	mat4 rotation;
 	InitRotation(rotation, vec3(1.0f, 0.0f, 0.0f), ToRadians(val));
 
+	using namespace Renderer;
+	paSetProjectionMatrix(state->Scene.ProjectionMatrix);
+	paSetViewMatrix(state->Scene.ViewMatrix);
+	mat4 id;
+	InitIdentity(id);
+	paSetModelMatrix(id);
+
 	for (uint32 i = 0; i < (uint32)numIndices; i += 3)
 	{
 		uint16 idx = demoData.indices[i];
 		uint16 idx1 = demoData.indices[i + 1];
 		uint16 idx2 = demoData.indices[i + 2];
 
-		using namespace Renderer;
+		
 
 		Vertex v1 = { { demoData.vertices[idx].x, demoData.vertices[idx].y, demoData.vertices[idx].z, 1.0 }, {}, {} };
 		Vertex v2 = { { demoData.vertices[idx1].x, demoData.vertices[idx1].y, demoData.vertices[idx1].z, 1.0 }, {}, {} };
@@ -105,19 +112,10 @@ void DemoInit(GameState* state, GameMemory* memory)
 
 		//It should be Model * View * Projection
 		//Let's see if that actually works :D
-		mat4 transform = state->Scene.ProjectionMatrix * state->Scene.ViewMatrix * (translation);
-
-		v1.Position = transform * v1.Position;
-		v2.Position = transform * v2.Position;
-		v3.Position = transform * v3.Position;
-
 		Triangle t = { v1, v2, v3 };
 
-		paSetProjectionMatrix(state->Scene.ProjectionMatrix);
-		mat4 id;
-		InitIdentity(id);
-		paSetModelMatrix(id);
 		paTriangle(t, 0x0000ff00);
+
 	}
 
 
