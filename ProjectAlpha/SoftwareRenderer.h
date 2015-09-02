@@ -68,6 +68,8 @@ namespace ProjectAlpha
 
 			uint32 FillMode;
 			uint32 ClearColor;
+
+			uint32 DrawColor;
 		};
 
 		extern "C"
@@ -78,8 +80,6 @@ namespace ProjectAlpha
 				real32 Depth[3];
 				real32 DepthXStep;
 				real32 DepthYStep;
-
-
 			};
 
 			struct Edge
@@ -90,21 +90,6 @@ namespace ProjectAlpha
 				real32 xStep;
 				real32 sX;
 
-			};
-
-			__declspec(align(16)) struct ScanLine
-			{
-				int32 y;
-				Edge* l1;
-				Edge* l2;
-				uint32 color;
-			};
-
-			struct PARenderTileOp
-			{
-				PARenderTile* Tile;
-				ScanLine Line;
-				Gradients Gradients;
 			};
 		}
 
@@ -135,6 +120,9 @@ namespace ProjectAlpha
 		//enable,disable
 		void paEnable(uint32 mode);
 		void paDisable(uint32 mode);
+		
+		//
+		void paSetDrawColor(uint32 color);
 
 		//Clear
 		void paSetFillMode(uint32 fillMode);
@@ -143,13 +131,14 @@ namespace ProjectAlpha
 
 		void _paDrawPixel(int32 x, int32 y, uint32 color);
 		void _paFillRect(int32 x, int32 y, int32 w, int32 h, uint32 color);
-		PLATFORM_WORK_QUEUE_CALLBACK(paRasterizeScanLine);
-		//void _paRasterizeScanLine(int32 y, Vertex& v1, Vertex& v2, Vertex& v3, Vertex& v4, uint32 color);
-		void _paRasterizeScanLine(PARenderTileOp* op);
-		void paTriangle(Triangle& triangle, uint32 color);
-
 		void __paScanEdges(Edge& a, Edge& b, bool32 handedness);
-		void __paTriangle(Vertex& v1, Vertex& v2, Vertex& v3, uint32 color);
+
+		void paTriangle(Triangle& triangle);
+		void paTriangle(Vertex& v1, Vertex& v2, Vertex& v3);
+		void paRasterizeTriangle(Vertex& v1, Vertex& v2, Vertex& v3);
+
+		
+		
 
 		
 	}

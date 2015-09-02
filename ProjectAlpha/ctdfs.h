@@ -11,11 +11,14 @@
 #define Gigabytes(Value) (Megabytes(Value) * 1024LL)
 #define Terabytes(Value) (Gigabytes(Value) * 1024LL)
 
+//Casey Muratori doesn't like the keyword static because it has different meanings in different scopes, 
+//and we are adopting his views just as a good student should!
 #define local_persist static
 #define global_variable static
 
 #define Pi32 3.14159265359f
 
+//Primitive renaming
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
@@ -29,3 +32,18 @@ typedef uint64_t uint64;
 
 typedef float real32;
 typedef double real64;
+
+//Primitive shorthands
+typedef int8 i8;
+typedef int16 i16;
+typedef int32 i32;
+typedef int64 i64;
+typedef bool32 b32;
+
+typedef uint8 u8;
+typedef uint16 u16;
+typedef uint32 u32;
+typedef uint64 u64;
+
+typedef real32 r32;
+typedef real64 r64;

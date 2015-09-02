@@ -15,8 +15,8 @@ void DemoInit(GameState* state, GameMemory* memory)
 
 	//
 
-	int32 width = 10;
-	int32 height = 10;
+	int32 width = 12;
+	int32 height = 11;
 	int32 tileSize = 1;
 
 	int32 numTiles = width * height;
@@ -102,19 +102,18 @@ void DemoInit(GameState* state, GameMemory* memory)
 		uint16 idx1 = demoData.indices[i + 1];
 		uint16 idx2 = demoData.indices[i + 2];
 
-		
-
 		Vertex v1 = { { demoData.vertices[idx].x, demoData.vertices[idx].y, demoData.vertices[idx].z, 1.0 }, {}, {} };
 		Vertex v2 = { { demoData.vertices[idx1].x, demoData.vertices[idx1].y, demoData.vertices[idx1].z, 1.0 }, {}, {} };
 		Vertex v3 = { { demoData.vertices[idx2].x, demoData.vertices[idx2].y, demoData.vertices[idx2].z, 1.0 }, {}, {} };
 
-		//Create a transform matrix
+		u8 r = 95 + (i / (r32)numIndices) * 160;
+		u8 g = 0;
+		u8 b = 95 + (i / (r32)numIndices) * 160;
 
-		//It should be Model * View * Projection
-		//Let's see if that actually works :D
+		paSetDrawColor((r << 16 | g << 8 | b));
+
 		Triangle t = { v1, v2, v3 };
-
-		paTriangle(t, 0x0000ff00);
+		paTriangle(t);
 	}
 
 

@@ -4,7 +4,7 @@
 
 #define Align16(x) ((x + 15) & ~15)
 
-
+//Remove this later
 struct File
 {
 	char* name;
@@ -15,11 +15,3 @@ struct Platform
 {
 
 };
-
-
-
-
-extern "C"
-{
-
-}

@@ -86,13 +86,6 @@ namespace ProjectAlpha
 			v4 operator*(const v4& vec);
 		};
 
-		inline void PerspectiveDivide(v3& vec, real32 w)
-		{
-			vec.x /= w;
-			vec.y /= w;
-			vec.z /= w;
-		}
-
 		void InitIdentity(mat4& mat);
 		void InitScreenSpace(mat4& mat, real32 halfWidth, real32 halfHeight);
 		void InitTranslation(mat4& mat, v3 vec);

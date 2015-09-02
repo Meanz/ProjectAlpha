@@ -5,6 +5,43 @@
 #include "Memory.h"
 #include "VecMath.h"
 
+/*
+
+TODO(meanz):
+
+ProjectAlpha
+	* Move Platform material over to Platform.h
+	* Asset System
+	* Bump Pointer Memory Allocator ( Need it for fast alloc/dealloc for our Render Queues, sorting and all other temporary stuff )
+		* Things to think about
+			- Should we zero memory on alloc?
+			- How big should the pool be?
+			- Should the pool size be dynamic
+			- Should the pool be a subdivision of the current Allocator's arena?
+
+Software Renderer
+	* Polygon Clipping
+	* Texture Mapping
+	* Basic Lighting ( Normals and other attribs )
+	* Render Queues
+		- Tiled Renderer
+			- Tesselation for clipping or pixel by pixel clipping?
+		- Vertex Sorting
+	* Multi-threaded rendering
+		- Align to Cache Lines
+		
+	* Using _mm thingies, cool intrinsics, listen to Casey Muratori talk about it!
+
+Math
+	* SIMD
+
+Terrain ( DEMO )
+	* Perlin Noise
+	* Proper Normal Computation
+	* Tesselation based on view distances ( LOD ) 
+
+*/
+
 using namespace ProjectAlpha;
 using namespace ProjectAlpha::Math;
 
@@ -56,9 +93,6 @@ struct GameMemory
 
 global_variable platform_add_entry *PlatformAddEntry;
 global_variable platform_complete_all_work *PlatformCompleteAllWork;
-
-void* mem_alloc(uint32 size);
-void mem_free(uint32 address, uint32 size);
 
 extern "C"
 {
