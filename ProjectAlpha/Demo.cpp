@@ -4,11 +4,53 @@
 struct DemoData
 {
 	vec3* vertices;
+	vec3* normals;
+	vec2* uvs;
 	uint16* indices;
 	bool32 isInitialized;
 };
 
 global_variable DemoData demoData;
+
+inline r32 GetHeight(i32 x, i32 y)
+{
+	return sin(x + (y / 10.0f)) * cos(y + (x / 11.0f));
+}
+
+inline v3 _CalcNormal_GetPoint(i32 x, i32 y)
+{
+	return v3((r32)x, GetHeight(x, y), (r32)y);
+}
+
+inline v3 CalcTriangleNormal(v3 p1, v3 p2, v3 p3)
+{
+	return Cross((p3 - p1), (p2 - p1));
+}
+
+v3 CalcNormal(i32 x, i32 y)
+{
+	v3 p1 = _CalcNormal_GetPoint(x, y);
+	v3 p2 = _CalcNormal_GetPoint(x, y + 1);
+	v3 p3 = _CalcNormal_GetPoint(x + 1, y + 1);
+	v3 p4 = _CalcNormal_GetPoint(x + 1, y);
+	v3 p5 = _CalcNormal_GetPoint(x, y - 1);
+	v3 p6 = _CalcNormal_GetPoint(x - 1, y - 1);
+	v3 p7 = _CalcNormal_GetPoint(x - 1, y);
+
+	v3 n1 = CalcTriangleNormal(p3, p4, p1);
+	v3 n2 = CalcTriangleNormal(p1, p2, p3);
+	v3 n3 = CalcTriangleNormal(p1, p7, p2);
+	v3 n4 = CalcTriangleNormal(p1, p6, p6);
+	v3 n5 = CalcTriangleNormal(p5, p6, p1);
+	v3 n6 = CalcTriangleNormal(p5, p1, p4);
+	v3 n7 = CalcTriangleNormal(p4, p1, p3);
+
+	r32 endX = n1.x + n2.x + n3.x + n4.x + n5.x + n6.x + n7.x;
+	r32 endY = n1.y + n2.y + n3.y + n4.y + n5.y + n6.y + n7.y;
+	r32 endZ = n1.z + n2.z + n3.z + n4.z + n5.z + n6.z + n7.z;
+
+	return v3(endX / 7.0f, endY / 7.0f, endZ / 7.0f);
+}
 
 void DemoInit(GameState* state, GameMemory* memory)
 {
@@ -26,6 +68,8 @@ void DemoInit(GameState* state, GameMemory* memory)
 	if (!demoData.isInitialized)
 	{
 		demoData.vertices = (vec3*)Memory::MemoryAlloc(memory->memory, sizeof(vec3) * numVerts);
+		demoData.normals = (vec3*)Memory::MemoryAlloc(memory->memory, sizeof(vec3) * numVerts);
+		demoData.uvs = (vec2*)Memory::MemoryAlloc(memory->memory, sizeof(vec2) * numVerts);
 		demoData.indices = (uint16*)Memory::MemoryAlloc(memory->memory, sizeof(uint16) * numIndices);
 
 		if (!demoData.vertices || !demoData.indices)
@@ -34,6 +78,8 @@ void DemoInit(GameState* state, GameMemory* memory)
 		}
 
 		vec3* vert = demoData.vertices;
+		vec3* norm = demoData.normals;
+		vec2* uvs = demoData.uvs;
 		uint16* ind = demoData.indices;
 		for (int32 x = 0; x < width; x++)
 		{
@@ -56,6 +102,30 @@ void DemoInit(GameState* state, GameMemory* memory)
 				*(vert++) = v3;
 				*(vert++) = v4;
 
+				//Normals
+				vec3 n1 = CalcNormal(x + 1, y);
+				vec3 n2 = CalcNormal(x, y);
+				vec3 n3 = CalcNormal(x, y + 1);
+				vec3 n4 = CalcNormal(x + 1, y + 1);
+
+				//Push to memory
+				*(norm++) = n1;
+				*(norm++) = n2;
+				*(norm++) = n3;
+				*(norm++) = n4;
+
+				//UVs
+				vec2 u1 = vec2(0.0f, 1.0f);
+				vec2 u2 = vec2(1.0f, 1.0f);
+				vec2 u3 = vec2(1.0f, 0.0f);
+				vec2 u4 = vec2(0.0f, 0.0f);
+
+				//Push to memory
+				*(uvs++) = u1;
+				*(uvs++) = u2;
+				*(uvs++) = u3;
+				*(uvs++) = u4;
+
 				//Indices
 				*(ind++) = (uint16)(v0 + 1);
 				*(ind++) = (uint16)(v0 + 2);
@@ -75,7 +145,7 @@ void DemoInit(GameState* state, GameMemory* memory)
 	
 	Renderer::paSetClearColor(0x00ffffff);
 	Renderer::paClear(Renderer::COLOR_BIT | Renderer::DEPTH_BIT);
-	Renderer::paSetFillMode(Renderer::FILL);
+	Renderer::paSetFillMode(Renderer::PA_FILL);
 	Renderer::paEnable(Renderer::PA_DEPTH_TEST);
 
 	static real32 val = 0;
@@ -102,15 +172,23 @@ void DemoInit(GameState* state, GameMemory* memory)
 		uint16 idx1 = demoData.indices[i + 1];
 		uint16 idx2 = demoData.indices[i + 2];
 
-		Vertex v1 = { { demoData.vertices[idx].x, demoData.vertices[idx].y, demoData.vertices[idx].z, 1.0 }, {}, {} };
-		Vertex v2 = { { demoData.vertices[idx1].x, demoData.vertices[idx1].y, demoData.vertices[idx1].z, 1.0 }, {}, {} };
-		Vertex v3 = { { demoData.vertices[idx2].x, demoData.vertices[idx2].y, demoData.vertices[idx2].z, 1.0 }, {}, {} };
+		Vertex v1 = { 
+			{ demoData.vertices[idx].x, demoData.vertices[idx].y, demoData.vertices[idx].z, 1.0 }, 
+			{ demoData.normals[idx].x, demoData.normals[idx].y, demoData.normals[idx].z }, 
+			{ demoData.uvs[idx].x, demoData.uvs[idx].y } 
+		};
+		Vertex v2 = { 
+			{ demoData.vertices[idx1].x, demoData.vertices[idx1].y, demoData.vertices[idx1].z, 1.0 }, 
+			{ demoData.normals[idx1].x, demoData.normals[idx1].y, demoData.normals[idx1].z },
+			{ demoData.uvs[idx1].x, demoData.uvs[idx1].y }
+		};
+		Vertex v3 = { 
+			{ demoData.vertices[idx2].x, demoData.vertices[idx2].y, demoData.vertices[idx2].z, 1.0 }, 
+			{ demoData.normals[idx2].x, demoData.normals[idx2].y, demoData.normals[idx2].z },
+			{ demoData.uvs[idx2].x, demoData.uvs[idx2].y }
+		};
 
-		u8 r = 95 + (i / (r32)numIndices) * 160;
-		u8 g = 0;
-		u8 b = 95 + (i / (r32)numIndices) * 160;
-
-		paSetDrawColor((r << 16 | g << 8 | b));
+		paSetDrawColor(v4(1.0f, 0.0f, 0.0f, 1.0f));
 
 		Triangle t = { v1, v2, v3 };
 		paTriangle(t);

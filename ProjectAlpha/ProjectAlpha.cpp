@@ -44,7 +44,7 @@ extern "C"
 
 			//VIEW_MATRIX
 			//gameState->Scene.ViewMatrix = (_cRot * _cTrans);
-			InitLookAt(gameState->Scene.ViewMatrix, v3(10.0f, 15.0f, -10.0f), v3(5.0f, 1.0f, 5.0f), v3(0.0f, 1.0f, 0.0f));
+			InitLookAt(gameState->Scene.ViewMatrix, v3(8.0f, 8.0f, -5.0f), v3(5.0f, 1.0f, 5.0f), v3(0.0f, 1.0f, 0.0f));
 
 			//MODEL_MATRIX
 

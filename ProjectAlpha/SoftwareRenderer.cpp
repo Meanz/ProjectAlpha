@@ -12,22 +12,6 @@ namespace ProjectAlpha
 #define CONTEXT_CHECK ASSERT(!(_Context.IsCreated));
 
 
-		inline real32 CalcXStep(real32* values, real32 minYVert, real32 midYVert, real32 maxYVert, real32 oneOverDX)
-		{
-			return (((values[1] - values[2]) *
-				(minYVert - maxYVert)) -
-				((values[0] - values[2]) *
-				(midYVert - maxYVert))) * oneOverDX;
-		}
-
-		inline real32 CalcYStep(real32* values, real32 minYVert, real32 midYVert, real32 maxYVert, real32 oneOverDY)
-		{
-			return (((values[1] - values[2]) *
-				(minYVert - maxYVert)) -
-				((values[0] - values[2]) *
-				(midYVert - maxYVert))) * oneOverDY;
-		}
-
 		inline bool32 IsInsideViewFrustum(vec4 m_pos)
 		{
 			return (bool32)(abs(m_pos.x) <= abs(m_pos.w) &&
@@ -66,15 +50,17 @@ namespace ProjectAlpha
 			//allocate space for the context
 			_Context.Viewport = { 0.0f, 0.0f, (real32)pixelBuffer->width, (real32)pixelBuffer->height };
 			_Context.Modes = 0;
-			_Context.FillMode = FILL;
+			_Context.FillMode = PA_FILL;
 			_Context.ClearColor = 0x00ffffff;
-			_Context.DrawColor = 0x00ff0000;
+			_Context.DrawColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			_Context.Width = width;
 			_Context.Height = height;
 			_Context.DepthBuffer.width = width;
 			_Context.DepthBuffer.height = height;
 			_Context.DepthBuffer.pixels = (real32*)Memory::MemoryAlloc(memory->memory, sizeof(real32) * width * height);
 			_Context.PixelBuffer = pixelBuffer;
+			_Context.BoundTexture = nullptr;
+			_Context.DirectionalLight = vec3(0.2f, -0.6f, 0.2f);
 
 
 			//Create render tiles
@@ -211,7 +197,19 @@ namespace ProjectAlpha
 			_Context.Modes &= ~(1 << mode);
 		}
 
-		void paSetDrawColor(uint32 color)
+		void paSetDirectonalLight(vec3 lightDir)
+		{
+			CONTEXT_CHECK;
+			_Context.DirectionalLight = lightDir;
+		}
+
+		void paBindTexture(PATexture* pTexture)
+		{
+			CONTEXT_CHECK;
+			_Context.BoundTexture = pTexture;
+		}
+
+		void paSetDrawColor(vec4 color)
 		{
 			CONTEXT_CHECK;
 			_Context.DrawColor = color;
@@ -274,21 +272,16 @@ namespace ProjectAlpha
 			}
 		}
 
-		void CalculateEdge(Edge& e)
+		void Step(Edge& e)
 		{
-			real32 yStart = ceil(e.v1->Position.y);
-			real32 yEnd = ceil(e.v2->Position.y);
-			real32 yDist = e.v2->Position.y - e.v1->Position.y;
-			real32 xDist = e.v2->Position.x - e.v1->Position.x;
-			real32 yPrestep = yStart - e.v1->Position.y;
-
-			e.xStep = xDist / yDist;
-			e.sX = e.v1->Position.x + (yPrestep * e.xStep);
-
-			real32 xPrestep = e.sX - e.v1->Position.x;
+			e.x += e.xStep;
+			e.texCoordX += e.texCoordXStep;
+			e.texCoordY += e.texCoordYStep;
+			e.LightAmt += e.LightAmtStep;
+			e.OneOverZ += e.OneOverZStep;
 		}
 
-		void __paScanEdges(Edge& a, Edge& b, bool32 handedness)
+		void _paScanEdges(Gradients& g, Edge& a, Edge& b, bool32 handedness)
 		{
 			Edge& left = handedness ? b : a;
 			Edge& right = handedness ? a : b;
@@ -321,31 +314,66 @@ namespace ProjectAlpha
 				}
 			}
 #endif
+
 			for (int32 y = yStart; y < yEnd; y++)
 			{
 				//Draw pixel
-				int32 xMin = (int32)_MAX(ceil(left.sX), 0);
-				int32 xMax = (int32)_MIN(ceil(right.sX), _Context.PixelBuffer->width);
+				int32 xMin = (int32)_MAX(ceil(left.x), 0);
+				int32 xMax = (int32)_MIN(ceil(right.x), _Context.PixelBuffer->width);
+				real32 xPrestep = xMin - left.x;
+				
+				real32 texCoordX = left.texCoordX + g.TexCoordXXStep * xPrestep;
+				real32 texCoordY = left.texCoordY + g.TexCoordYXStep * xPrestep;
 
-				uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
-				for (int32 x = xMin; x < xMax; x++)
+				real32 oneOverZ = left.OneOverZ + g.OneOverZXStep * xPrestep;
+
+				real32 depth = left.depth * g.DepthXStep * xPrestep;
+				real32 lightAmt = left.LightAmt + g.LightAmtXStep * xPrestep;
+
+
+				if (_Context.FillMode == PA_FILL)
 				{
-					if (*pixel != _Context.ClearColor)
+					uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
+					for (int32 x = xMin; x < xMax; x++)
 					{
-						pixel++;
-						continue;
+
+						r32 z = 1.0f / oneOverZ;
+
+						i32 srcX = (i32)((texCoordX * z) * (r32)(255 - 1) + 0.5f);
+						i32 srcY = (i32)((texCoordY * z) * (r32)(255 - 1) + 0.5f);
+
+						v4 color = _Context.DrawColor;
+						if (_Context.Modes & PA_TEXTURE)
+						{
+							//Do stuff
+						}
+
+						//do lighting calculation
+						color = color * lightAmt;
+
+						*(pixel++) = (((u32)(color.w * 255) << 24) | ((u32)(color.x * 255) << 16) | ((u32)(color.y * 255) << 8) | ((u32)(color.z * 255) << 0));
+						
+
+						//Increment locals
+						//XStep
+						oneOverZ += g.OneOverZXStep;
+						texCoordX += g.TexCoordXXStep;
+						texCoordY += g.TexCoordYXStep;
+						depth += g.DepthXStep;
+						lightAmt += g.LightAmtXStep;
 					}
-					*(pixel++) = _Context.DrawColor;
+
 				}
-				//if (xMin <= xMax)
+				else if (_Context.FillMode == PA_LINES)
 				{
-					//*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin)) = 0x000000ff;
-					//*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMax)) = 0x00ff0000;
+					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin)) = 0x000000ff;
+					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMax)) = 0x000000ff;
 				}
 
 				//Left.Step(), Right.Step()
-				left.sX += left.xStep;
-				right.sX += right.xStep;
+				//YStep
+				Step(left);
+				Step(right);
 			}
 		}
 
@@ -379,6 +407,112 @@ namespace ProjectAlpha
 			}
 		}
 
+		void CalculateEdge(Edge& e, Gradients& g, int32 i)
+		{
+			real32 yStart = ceil(e.v1->Position.y);
+			real32 yEnd = ceil(e.v2->Position.y);
+			real32 yDist = e.v2->Position.y - e.v1->Position.y;
+			real32 xDist = e.v2->Position.x - e.v1->Position.x;
+			real32 yPrestep = yStart - e.v1->Position.y;
+
+			e.xStep = xDist / yDist;
+			e.x = e.v1->Position.x + (yPrestep * e.xStep);
+
+			real32 xPrestep = e.x - e.v1->Position.x;
+
+			e.texCoordX = g.TexCoordX[i] + g.TexCoordXXStep * xPrestep + g.TexCoordXYStep * yPrestep;
+			e.texCoordXStep = g.TexCoordXYStep + g.TexCoordXXStep * e.xStep;
+
+			e.texCoordY = g.TexCoordY[i] + g.TexCoordYXStep * xPrestep + g.TexCoordYYStep * yPrestep;
+			e.texCoordYStep = g.TexCoordYYStep + g.TexCoordYXStep * e.xStep;
+
+			e.LightAmt = g.LightAmt[i] + g.LightAmtXStep * xPrestep + g.LightAmtYStep * yPrestep;
+			e.LightAmtStep = g.LightAmtYStep + g.LightAmtXStep * e.xStep;
+
+			e.OneOverZ = g.OneOverZ[i] + g.OneOverZXStep * xPrestep + g.OneOverZYStep * yPrestep;
+			e.OneOverZStep = g.OneOverZYStep + g.OneOverZXStep * e.xStep;
+		}
+
+		inline real32 CalcXStep(real32* values, real32 minYVert, real32 midYVert, real32 maxYVert, real32 oneOverDX)
+		{
+			return (((values[1] - values[2]) *
+				(minYVert - maxYVert)) -
+				((values[0] - values[2]) *
+				(midYVert - maxYVert))) * oneOverDX;
+		}
+
+		inline real32 CalcYStep(real32* values, real32 minYVert, real32 midYVert, real32 maxYVert, real32 oneOverDY)
+		{
+			return (((values[1] - values[2]) *
+				(minYVert - maxYVert)) -
+				((values[0] - values[2]) *
+				(midYVert - maxYVert))) * oneOverDY;
+		}
+
+		inline real32 Saturate(real32 val)
+		{
+			if (val > 1.0f)
+				return 1.0f;
+			if (val < 0.0f)
+				return 0.0f;
+			return val;
+		}
+
+		void CalculateGradients(Gradients& g, Vertex& v1, Vertex& v2, Vertex& v3)
+		{
+
+			real32 oneOverdX = 1.0f / (((v2.Position.x - v3.Position.x) * (v1.Position.y - v3.Position.y)) -
+				((v1.Position.x - v3.Position.x) * (v2.Position.y - v3.Position.y)));
+
+			real32 oneOverdY = -oneOverdX;
+
+
+			g.Depth[0] = v1.Position.z;
+			g.Depth[1] = v2.Position.z;
+			g.Depth[2] = v3.Position.z;
+
+			vec3 lightDir = _Context.DirectionalLight;
+			g.LightAmt[0] = Saturate(Dot(v1.Normal, lightDir)) * 0.9f + 0.1f;
+			g.LightAmt[1] = Saturate(Dot(v2.Normal, lightDir)) * 0.9f + 0.1f;
+			g.LightAmt[2] = Saturate(Dot(v3.Normal, lightDir)) * 0.9f + 0.1f;
+
+			//Note that the W component is the perspective Z value
+			//The Z component is the occlusion Z value
+			g.OneOverZ[0] = 1.0f / v1.Position.w;
+			g.OneOverZ[1] = 1.0f / v2.Position.w;
+			g.OneOverZ[2] = 1.0f / v3.Position.w;
+
+			g.TexCoordX[0] = v1.UV.x * g.OneOverZ[0];
+			g.TexCoordX[1] = v2.UV.x * g.OneOverZ[1];
+			g.TexCoordX[2] = v3.UV.x * g.OneOverZ[2];
+
+			g.TexCoordY[0] = v1.UV.y * g.OneOverZ[0];
+			g.TexCoordY[1] = v2.UV.y * g.OneOverZ[1];
+			g.TexCoordY[2] = v3.UV.y * g.OneOverZ[2];
+
+			real32 v1y = v1.Position.y;
+			real32 v2y = v2.Position.y;
+			real32 v3y = v3.Position.y;
+
+			real32 v1x = v1.Position.x;
+			real32 v2x = v2.Position.x;
+			real32 v3x = v3.Position.x;
+
+			g.TexCoordXXStep = CalcXStep(g.TexCoordX, v1y, v2y, v3y, oneOverdX);
+			g.TexCoordXYStep = CalcYStep(g.TexCoordX, v1x, v2x, v3x, oneOverdY);
+			g.TexCoordYXStep = CalcXStep(g.TexCoordY, v1y, v2y, v3y, oneOverdX);
+			g.TexCoordYYStep = CalcYStep(g.TexCoordY, v1x, v2x, v3x, oneOverdY);
+
+			g.DepthXStep = CalcXStep(g.Depth, v1y, v2y, v3y, oneOverdX);
+			g.DepthYStep = CalcYStep(g.Depth, v1x, v2x, v3x, oneOverdY);
+
+			g.LightAmtXStep = CalcXStep(g.LightAmt, v1y, v2y, v3y, oneOverdX);
+			g.LightAmtYStep = CalcYStep(g.LightAmt, v1x, v2x, v3x, oneOverdY);
+
+			g.OneOverZXStep = CalcXStep(g.OneOverZ, v1y, v2y, v3y, oneOverdX);
+			g.OneOverZYStep = CalcYStep(g.OneOverZ, v1x, v2x, v3x, oneOverdY);
+		}
+
 		void paRasterizeTriangle(Vertex& _v1, Vertex& _v2, Vertex& _v3)
 		{
 			//Tri sort
@@ -388,7 +522,7 @@ namespace ProjectAlpha
 
 			if (TriangleAreaTimesTwo(v1, v3, v2) >= 0)
 			{
-				return;
+				//return;
 			}
 
 			mat4 screenSpaceTransform;
@@ -427,18 +561,20 @@ namespace ProjectAlpha
 				v2 = temp;
 			}
 
+			Gradients gradients;
 			Edge topToBottom = { &v1, &v3 };
 			Edge topToMiddle = { &v1, &v2 };
 			Edge middleToBottom = { &v2, &v3 };
 
-			CalculateEdge(topToBottom);
-			CalculateEdge(topToMiddle);
-			CalculateEdge(middleToBottom);
+			CalculateGradients(gradients, v1, v2, v3);
+			CalculateEdge(topToBottom, gradients, 0);
+			CalculateEdge(topToMiddle, gradients, 0);
+			CalculateEdge(middleToBottom, gradients, 1);
 
 			bool32 handedness = TriangleAreaTimesTwo(v1, v3, v2) >= 0 ? true : false;
 
-			__paScanEdges(topToBottom, topToMiddle, handedness);
-			__paScanEdges(topToBottom, middleToBottom, handedness);
+			_paScanEdges(gradients, topToBottom, topToMiddle, handedness);
+			_paScanEdges(gradients, topToBottom, middleToBottom, handedness);
 		}
 	}
 }

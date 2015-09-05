@@ -82,6 +82,11 @@ namespace ProjectAlpha
 				in.z *= len);
 		}
 
+		real32 Dot(v3 l, v3 r)
+		{
+			return (l.x * r.x + l.y * r.y + l.z * r.z);
+		}
+
 		//Vec4 functions
 
 		v4 v4::operator/(const real32& by)
@@ -97,6 +102,11 @@ namespace ProjectAlpha
 		v4 v4::operator-(const v4& other)
 		{
 			return v4{ x - other.x, y - other.y, z - other.z, other.w - other.w };
+		}
+
+		v4 v4::operator*(const r32& other)
+		{
+			return v4{ x * other, y * other, z * other, w * other };
 		}
 
 		real32 Length(v4 v1)
@@ -123,8 +133,12 @@ namespace ProjectAlpha
 				in.w /= len);
 		}
 
+		real32 Dot(v4 l, v4 r)
+		{
+			return (l.x * r.x + l.y * r.y + l.z * r.z + l.w * r.w);
+		}
+
 		//mat4 functions
-#undef m
 #define m(x, y) mat.values[x + (y * 4)]
 #define l(x, y) values[x + (y *4 )]
 #define r(x, y) other.values[x + (y * 4)]
@@ -135,10 +149,10 @@ namespace ProjectAlpha
 			{
 				for (int j = 0; j < 4; j++)
 				{
-					m(i, j) =   l(i, 0) * r(0, j) +
-								l(i, 1) * r(1, j) +
-								l(i, 2) * r(2, j) +
-								l(i, 3) * r(3, j);
+					m(i, j) = l(i, 0) * r(0, j) +
+						l(i, 1) * r(1, j) +
+						l(i, 2) * r(2, j) +
+						l(i, 3) * r(3, j);
 				}
 			}
 			return mat;
@@ -204,7 +218,7 @@ namespace ProjectAlpha
 			m(1, 0) = 0;							m(1, 1) = 1.0f / tanHalfFOV;	m(1, 2) = 0;						m(1, 3) = 0;
 			m(2, 0) = 0;							m(2, 1) = 0;					m(2, 2) = (-zNear - zFar) / zRange;	m(2, 3) = 2 * zFar * zNear / zRange;
 			m(3, 0) = 0;							m(3, 1) = 0;					m(3, 2) = 1;						m(3, 3) = 0;
-		
+
 			if (true) return;
 		}
 

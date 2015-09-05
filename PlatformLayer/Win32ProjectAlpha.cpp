@@ -464,13 +464,6 @@ int CALLBACK WinMain(
 			//Do modifications of our pixel buffer
 			gameCode.gameRender(gameMemory, &gameState);
 
-			//Blit the pixelbuffer to the screen
-			HDC hdc = GetDC(window);
-			Win32WindowDimension dim = __Win32GetWindowDimension(window);
-			__Win32BlitBuffer(backbuffer, hdc, dim);
-
-			ReleaseDC(window, hdc);
-
 			//How long did the render op take?
 			int64 delta = GetTickCount64() - start;
 
@@ -478,6 +471,13 @@ int CALLBACK WinMain(
 			_itoa_s(delta, buf, 10);
 			OutputDebugStringA(buf);
 			OutputDebugStringA("\n");
+
+			//Blit the pixelbuffer to the screen
+			HDC hdc = GetDC(window);
+			Win32WindowDimension dim = __Win32GetWindowDimension(window);
+			__Win32BlitBuffer(backbuffer, hdc, dim);
+
+			ReleaseDC(window, hdc);
 
 			Sleep(1);
 		}

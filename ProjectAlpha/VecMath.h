@@ -13,7 +13,7 @@ namespace ProjectAlpha
 			real32 x;
 			real32 y;
 
-			v2() {}
+			v2() : x(0.0f), y(0.0f) {}
 			v2(real32 _x, real32 _y) : x(_x), y(_y) {}
 
 			v2 operator/(const real32& by);
@@ -44,6 +44,7 @@ namespace ProjectAlpha
 		real32 Length(v3 v1);
 		real32 Dist(v3 v1, v3 v2);
 		v3 Normalize(v3 v1);
+		real32 Dot(v3 l, v3 r);
 
 		struct v4
 		{
@@ -58,11 +59,13 @@ namespace ProjectAlpha
 			v4 operator/(const real32& by);
 			v4 operator+(const v4& other);
 			v4 operator-(const v4& other);
+			v4 operator*(const r32& other);
 		};
 
 		real32 Length(v4 v1);
 		v4 Cross(v4 v1, v4 v2);
 		v4 Normalize(v4 v1);
+		real32 Dot(v4 l, v4 r);
 
 		struct mat3
 		{

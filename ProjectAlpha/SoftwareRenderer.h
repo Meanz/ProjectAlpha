@@ -12,7 +12,7 @@ namespace ProjectAlpha
 		{
 			vec4 Position;
 			vec3 Normal;
-			vec3 UV;
+			vec2 UV;
 		};
 
 		struct Triangle
@@ -29,14 +29,6 @@ namespace ProjectAlpha
 			int32 height;
 		};
 
-		struct RenderBuffer
-		{
-			PixelBuffer pixelBuffer;
-			DepthBuffer16 depthBuffer;
-			int32 width;
-			int32 height;
-		};
-
 		//A render tile
 		struct PARenderTile
 		{
@@ -46,7 +38,14 @@ namespace ProjectAlpha
 			int32 MaxY;
 		};
 
-		//This should be aligned to 32 unless pointers aren't 32, which would make things awkward
+		struct PATexture
+		{
+			void* Pixels;
+			int32 Width;
+			int32 Height;
+			int32 BytesPerPixel;
+		};
+
 		struct PAContext
 		{
 			PixelBuffer* PixelBuffer;
@@ -57,8 +56,8 @@ namespace ProjectAlpha
 
 			//Render stuff
 			PARenderTile Tiles[4*4];
+			PATexture* BoundTexture;
 
-			//4*32bit floats?
 			vec4 Viewport;
 			mat4 Projection;
 			mat4 Model;
@@ -69,7 +68,9 @@ namespace ProjectAlpha
 			uint32 FillMode;
 			uint32 ClearColor;
 
-			uint32 DrawColor;
+			vec4 DrawColor;
+
+			vec3 DirectionalLight;
 		};
 
 		extern "C"
@@ -78,8 +79,21 @@ namespace ProjectAlpha
 			struct Gradients
 			{
 				real32 Depth[3];
+				real32 OneOverZ[3];
+				real32 TexCoordX[3];
+				real32 TexCoordY[3];
+				real32 LightAmt[3];
+
 				real32 DepthXStep;
 				real32 DepthYStep;
+				real32 TexCoordXXStep;
+				real32 TexCoordXYStep;
+				real32 TexCoordYXStep;
+				real32 TexCoordYYStep;
+				real32 LightAmtXStep;
+				real32 LightAmtYStep;
+				real32 OneOverZXStep;
+				real32 OneOverZYStep;
 			};
 
 			struct Edge
@@ -88,7 +102,22 @@ namespace ProjectAlpha
 				Vertex* v2;
 
 				real32 xStep;
-				real32 sX;
+				real32 x;
+
+				real32 texCoordX;
+				real32 texCoordXStep;
+
+				real32 texCoordY;
+				real32 texCoordYStep;
+
+				real32 depth;
+				real32 depthStep;
+
+				real32 LightAmt;
+				real32 LightAmtStep;
+
+				real32 OneOverZ;
+				real32 OneOverZStep;
 
 			};
 		}
@@ -96,12 +125,13 @@ namespace ProjectAlpha
 		enum
 		{
 			PA_DEPTH_TEST = 0x1,
+			PA_TEXTURE = 0x2,
 		};
 
 		enum
 		{
-			FILL = 0x1,
-			LINES = 0x2,
+			PA_FILL = 0x1,
+			PA_LINES = 0x2,
 		};
 
 		enum
@@ -120,9 +150,15 @@ namespace ProjectAlpha
 		//enable,disable
 		void paEnable(uint32 mode);
 		void paDisable(uint32 mode);
+
+		//
+		void paSetDirectonalLight(vec3 lightDir);
+
+		//
+		void paBindTexture(PATexture* pTexture);
 		
 		//
-		void paSetDrawColor(uint32 color);
+		void paSetDrawColor(vec4 color);
 
 		//Clear
 		void paSetFillMode(uint32 fillMode);
@@ -131,7 +167,7 @@ namespace ProjectAlpha
 
 		void _paDrawPixel(int32 x, int32 y, uint32 color);
 		void _paFillRect(int32 x, int32 y, int32 w, int32 h, uint32 color);
-		void __paScanEdges(Edge& a, Edge& b, bool32 handedness);
+		void _paScanEdges(Gradients& g, Edge& a, Edge& b, bool32 handedness);
 
 		void paTriangle(Triangle& triangle);
 		void paTriangle(Vertex& v1, Vertex& v2, Vertex& v3);
