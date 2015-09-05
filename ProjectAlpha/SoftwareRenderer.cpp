@@ -100,68 +100,6 @@ namespace ProjectAlpha
 			return((bool32)true);
 		}
 
-		void doAwesomeShit()
-		{
-
-			//
-			//if(hasarea(fillrect))
-
-			//		typedef int32 _m128i;
-			//#define _mm_set1_epi8(x) x
-
-			{
-				int32 MaxX = 0;
-				PARenderTile fillRect = {};
-
-				__m128i ClipMask = _mm_set1_epi8(-1);
-
-				__m128i StartupClipMask = _mm_set1_epi8(-1);
-				__m128i StartClipMask = _mm_set1_epi8(-1);
-				__m128i EndClipMask = _mm_set1_epi8(-1);
-
-				__m128i StartClipMasks[] =
-				{
-					_mm_slli_si128(StartClipMask, 0 * 4),
-					_mm_slli_si128(StartClipMask, 1 * 4),
-					_mm_slli_si128(StartClipMask, 2 * 4),
-					_mm_slli_si128(StartClipMask, 3 * 4)
-				};
-
-				__m128i EndClipMasks[] =
-				{
-					_mm_srli_si128(StartupClipMask, 0 * 4),
-					_mm_srli_si128(StartupClipMask, 3 * 4),
-					_mm_srli_si128(StartupClipMask, 2 * 4),
-					_mm_srli_si128(StartupClipMask, 1 * 4)
-				};
-
-				if (fillRect.MinX & 3)
-				{
-					StartClipMask = StartClipMasks[fillRect.MinX & 3];
-					fillRect.MinX = fillRect.MinX & ~3;
-				}
-				if (fillRect.MaxX & 3)
-				{
-					EndClipMask = EndClipMasks[fillRect.MaxX & 3];
-					fillRect.MaxX = (fillRect.MaxX & ~3) + 4;
-				}
-
-				for (int32 XI = 0; XI < MaxX; XI += 4)
-				{
-
-					if ((XI + 8) < MaxX)
-					{
-						ClipMask = _mm_set1_epi8(-1);
-					}
-					else
-					{
-						ClipMask = EndClipMask;
-					}
-				}
-			}
-
-		}
-
 		bool32 paDestroyContext(GameMemory* memory)
 		{
 			ASSERT((_Context.IsCreated));
