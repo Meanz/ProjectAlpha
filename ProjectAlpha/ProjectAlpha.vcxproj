@@ -79,7 +79,6 @@
     <ClInclude Include="SoftwareRenderer.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="ProjectAlpha.h" />
-    <ClInclude Include="Thread.h" />
     <ClInclude Include="VecMath.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

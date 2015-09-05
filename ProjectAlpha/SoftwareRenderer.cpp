@@ -248,9 +248,9 @@ namespace ProjectAlpha
 		{
 			CONTEXT_CHECK;
 			if (x < 0 || x >= _Context.PixelBuffer->width)
-				return; //discard fragment
+				return;
 			if (y < 0 || y >= _Context.PixelBuffer->height)
-				return; //discard fragment
+				return;
 
 			((uint32*)_Context.PixelBuffer->memory)[x + (y * _Context.PixelBuffer->width)] = color;
 		}
@@ -261,11 +261,11 @@ namespace ProjectAlpha
 			for (int32 _x = x; _x < x + w; _x++)
 			{
 				if (_x < 0 || _x >= _Context.PixelBuffer->width)
-					continue; //discard fragment
+					continue;
 				for (int32 _y = y; _y < y + h; _y++)
 				{
 					if (_y < 0 || _y >= _Context.PixelBuffer->height)
-						continue; //discard fragment
+						continue;
 					//DrawPixel(pixelBuffer, _x, _y, color);
 					((uint32*)_Context.PixelBuffer->memory)[_x + (_y * _Context.PixelBuffer->width)] = color;
 				}
@@ -317,7 +317,6 @@ namespace ProjectAlpha
 
 			for (int32 y = yStart; y < yEnd; y++)
 			{
-				//Draw pixel
 				int32 xMin = (int32)_MAX(ceil(left.x), 0);
 				int32 xMax = (int32)_MIN(ceil(right.x), _Context.PixelBuffer->width);
 				real32 xPrestep = xMin - left.x;
