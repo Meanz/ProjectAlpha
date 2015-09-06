@@ -219,6 +219,58 @@ namespace ProjectAlpha
 			e.OneOverZ += e.OneOverZStep;
 		}
 
+#include <Windows.h>
+		global_variable r64 pcFreq;
+		global_variable u64 cntStart;
+
+		void TimingStart()
+		{
+			LARGE_INTEGER li;
+			QueryPerformanceFrequency(&li);
+			pcFreq = double(li.QuadPart) / 1000000.0;
+			QueryPerformanceCounter(&li);
+			cntStart = li.QuadPart;
+		}
+
+		double TimingEnd()
+		{
+			LARGE_INTEGER li;
+			QueryPerformanceCounter(&li);
+			return double(li.QuadPart - cntStart) / pcFreq;
+		}
+
+		void paSetCycles(r64 cycles)
+		{
+			CONTEXT_CHECK;
+			_Context._cycles = cycles;
+		}
+
+		r64 paGetCycles()
+		{
+			CONTEXT_CHECK;
+			return _Context._cycles;
+		}
+
+		void paAddCycles(r64 cycles)
+		{
+			_Context._cycles += cycles;
+			_Context._cyclesCount++;
+		}
+
+		u32 paGetCyclesCount()
+		{
+			CONTEXT_CHECK;
+			return _Context._cyclesCount;
+		}
+		void paResetCycles()
+		{
+			CONTEXT_CHECK;
+			_Context._cycles = 0;
+			_Context._cyclesCount = 0;
+		}
+
+
+
 		void _paScanEdges(Gradients& g, Edge& a, Edge& b, bool32 handedness)
 		{
 			Edge& left = handedness ? b : a;
@@ -253,65 +305,158 @@ namespace ProjectAlpha
 			}
 #endif
 
+			TimingStart();
 			for (int32 y = yStart; y < yEnd; y++)
 			{
+
+#if 0
 				int32 xMin = (int32)_MAX(ceil(left.x), 0);
 				int32 xMax = (int32)_MIN(ceil(right.x), _Context.PixelBuffer->width);
 				real32 xPrestep = xMin - left.x;
-				
 				real32 texCoordX = left.texCoordX + g.TexCoordXXStep * xPrestep;
 				real32 texCoordY = left.texCoordY + g.TexCoordYXStep * xPrestep;
-
 				real32 oneOverZ = left.OneOverZ + g.OneOverZXStep * xPrestep;
-
 				real32 depth = left.depth * g.DepthXStep * xPrestep;
 				real32 lightAmt = left.LightAmt + g.LightAmtXStep * xPrestep;
 
-
-				if (_Context.FillMode == PA_FILL)
+				u32* pixel = ((u32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
+				for (int32 x = xMin; x < xMax; x++)
 				{
-					uint32* pixel = ((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
-					for (int32 x = xMin; x < xMax; x++)
+
+					r32 z = 1.0f / oneOverZ;
+					i32 srcX = (i32)((texCoordX * z) * (r32)(255 - 1) + 0.5f);
+					i32 srcY = (i32)((texCoordY * z) * (r32)(255 - 1) + 0.5f);
+
+					v4 color = _Context.DrawColor;
+					if (_Context.Modes & PA_TEXTURE)
 					{
-
-						r32 z = 1.0f / oneOverZ;
-
-						i32 srcX = (i32)((texCoordX * z) * (r32)(255 - 1) + 0.5f);
-						i32 srcY = (i32)((texCoordY * z) * (r32)(255 - 1) + 0.5f);
-
-						v4 color = _Context.DrawColor;
-						if (_Context.Modes & PA_TEXTURE)
-						{
-							//Do stuff
-						}
-
-						//do lighting calculation
-						color = color * lightAmt;
-
-						*(pixel++) = (((u32)(color.w * 255) << 24) | ((u32)(color.x * 255) << 16) | ((u32)(color.y * 255) << 8) | ((u32)(color.z * 255) << 0));
-						
-
-						//Increment locals
-						//XStep
-						oneOverZ += g.OneOverZXStep;
-						texCoordX += g.TexCoordXXStep;
-						texCoordY += g.TexCoordYXStep;
-						depth += g.DepthXStep;
-						lightAmt += g.LightAmtXStep;
+						//Do stuff
 					}
 
+					//do lighting calculation
+					color.x = color.x * lightAmt;
+					color.y = color.y * lightAmt;
+					color.z = color.z * lightAmt;
+					*(pixel) = (((u32)(color.w * 255) << 24) | ((u32)(color.x * 255) << 16) | ((u32)(color.y * 255) << 8) | ((u32)(color.z * 255) << 0));
+
+					//Increment locals
+					//XStep
+					oneOverZ += g.OneOverZXStep;
+					texCoordX += g.TexCoordXXStep;
+					texCoordY += g.TexCoordYXStep;
+					depth += g.DepthXStep;
+					lightAmt += g.LightAmtXStep;
+
+					//Advance pixels
+					pixel ++;
 				}
-				else if (_Context.FillMode == PA_LINES)
+#else
+
+#define _f128(x, y) ((r32*)&x)[y]
+				int32 xMin = (int32)_MAX(ceil(left.x), 0);
+				int32 xMax = (int32)_MIN(ceil(right.x), _Context.PixelBuffer->width);
+				//real32 depth = left.depth * g.DepthXStep * xPrestep;
+
+				__m128 texWidth_4x = _mm_set1_ps(254.0f); //width - 1 
+				__m128 texHeight_4x = _mm_set1_ps(254.0f); //width - 1
+				__m128 half_4x = _mm_set1_ps(0.5f);
+				__m128 one_4x = _mm_set1_ps(1.0f);
+				
+				r32 xPrestep = xMin - left.x;
+				__m128 _xPrestep_4x = _mm_set1_ps(xPrestep);
+
+#define CalcInitialCoord(l, r) _mm_add_ps(l, _mm_mul_ps(r, _xPrestep_4x))
+
+				__m128 texCoordX_4x = _mm_set1_ps(left.texCoordX);
+				__m128 texCoordXXStep_4x = _mm_set1_ps(g.TexCoordXXStep);
+				__m128 initialTexCoordX_4x = CalcInitialCoord(texCoordX_4x, texCoordXXStep_4x);
+
+				__m128 texCoordY_4x = _mm_set1_ps(left.texCoordY);
+				__m128 texCoordYXStep_4x = _mm_set1_ps(g.TexCoordYXStep);
+				__m128 initialTexCoordY_4x = CalcInitialCoord(texCoordY_4x, texCoordYXStep_4x);
+
+				__m128 oneOverZ_4x = _mm_set1_ps(left.OneOverZ);
+				__m128 oneOverZXStep_4x = _mm_set1_ps(g.OneOverZXStep);
+				__m128 initialOneOverZ_4x = CalcInitialCoord(oneOverZ_4x, oneOverZXStep_4x);
+
+				__m128 lightAmt_4x = _mm_set1_ps(left.LightAmt);
+				__m128 lightAmtXStep_4x = _mm_set1_ps(g.LightAmtXStep);
+				__m128 initialLightAmt_4x = CalcInitialCoord(lightAmt_4x, lightAmtXStep_4x);
+
+				u32* pixel = ((u32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin);
+				for (int32 x = xMin; x < xMax; x += 4)
 				{
-					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMin)) = 0x000000ff;
-					*(((uint32*)_Context.PixelBuffer->memory) + ((y * _Context.PixelBuffer->width) + xMax)) = 0x000000ff;
+					//All x variables here
+					__m128 texCoordX, texCoordY, oneOverZ, lightAmt;
+					__m128 colorR, colorG, colorB, colorA;
+					__m128 srcX, srcY;
+					__m128 z;
+
+
+					i32 xOff = x - xMin;
+					__m128 _mmxOff = _mm_set_ps((r32)xOff + 0, (r32)xOff + 1, (r32)xOff + 2, (r32)xOff + 3);
+
+					//texCoordX = _mm_add_ps(texCoordX, _mm_mul_ps(_mm_set1_ps(g.TexCoordXXStep), _xPrestep_4x));
+					//texCoordX = _mm_add_ps(texCoordX, _mm_mul_ps(_mm_set1_ps(g.TexCoordXXStep), _mmxOff));
+					
+					//Light amt
+					//_f128(lightAmt, i) = (left.LightAmt) + (g.LightAmtXStep * xPrestep) + (g.LightAmtXStep * (i + xOff));
+#define CalcCoord(amt, xstep) _mm_add_ps(amt, _mm_add_ps(_mm_mul_ps(xstep, _xPrestep_4x), _mm_mul_ps(xstep, _mmxOff)))
+#define CalcCoord2(l, r) _mm_add_ps(l, _mm_mul_ps(r, _mmxOff))
+
+					texCoordX = CalcCoord2(initialTexCoordX_4x, texCoordXXStep_4x);
+					texCoordY = CalcCoord2(initialTexCoordY_4x, texCoordYXStep_4x);
+					oneOverZ = CalcCoord2(initialOneOverZ_4x, oneOverZXStep_4x);
+					lightAmt = CalcCoord2(initialLightAmt_4x, lightAmtXStep_4x);
+
+					z = _mm_div_ps(one_4x, oneOverZ);
+
+					for (int i = 0; i < 4; i++)
+					{
+						//Color!
+						_f128(colorR, i) = _Context.DrawColor.x;
+						_f128(colorG, i) = _Context.DrawColor.y;
+						_f128(colorB, i) = _Context.DrawColor.z;
+						_f128(colorA, i) = _Context.DrawColor.w;
+					}
+
+					//i32 srcX = (i32)((texCoordX * z) * (r32)(255 - 1) + 0.5f);
+					srcX = _mm_add_ps(_mm_mul_ps(_mm_mul_ps(texCoordX, z), texWidth_4x), half_4x);
+					srcY = _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(texCoordY, z), texHeight_4x), half_4x);
+
+					//Lighting multiplication
+					colorR = _mm_mul_ps(colorR, lightAmt);
+					colorG = _mm_mul_ps(colorG, lightAmt);
+					colorB = _mm_mul_ps(colorB, lightAmt);
+
+					//Unpacks
+					//__m128i R1B1R0B0 = _mm_unpacklo_epi32(_mm_castps_si128(colorB), _mm_castps_si128(colorR));
+					//__m128i A1G1A0G0 = _mm_unpacklo_epi32(_mm_castps_si128(colorG), _mm_castps_si128(colorA));
+
+					//Write
+					for (int i = 0; i < 4; i++)
+					{
+						*(pixel + i) = (
+							((u32)(_f128(colorA, i) * 255) << 24) | 
+							((u32)(_f128(colorR, i) * 255) << 16) | 
+							((u32)(_f128(colorG, i) * 255) << 8 ) | 
+							((u32)(_f128(colorB, i) * 255) << 0 ));
+					}
+					
+					pixel += 4;
 				}
+
+
+
+#endif
 
 				//Left.Step(), Right.Step()
 				//YStep
 				Step(left);
 				Step(right);
 			}
+			paAddCycles(TimingEnd());
+
 		}
 
 		void paTriangle(Triangle& triangle)

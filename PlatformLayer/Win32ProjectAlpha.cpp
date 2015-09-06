@@ -1,4 +1,4 @@
-#include <ProjectAlpha.h>
+﻿#include <ProjectAlpha.h>
 #include <Windows.h>
 #include <iostream>
 #include <ostream>
@@ -334,6 +334,7 @@ bool __Win32ReadFile(File file)
 	}
 }
 
+
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -469,8 +470,17 @@ int CALLBACK WinMain(
 
 			char buf[10];
 			_itoa_s(delta, buf, 10);
+			OutputDebugStringA("## Frame ##\n");
+			OutputDebugStringA("Blit Time: ");
 			OutputDebugStringA(buf);
+			OutputDebugStringA(" ms");
 			OutputDebugStringA("\n");
+
+			OutputDebugStringA("Cycle Debug: ");
+			buf[200];
+			_itoa_s(gameMemory->_cycles, buf, 10);
+			OutputDebugStringA(buf);
+			OutputDebugStringA(" microseconds\n");
 
 			//Blit the pixelbuffer to the screen
 			HDC hdc = GetDC(window);

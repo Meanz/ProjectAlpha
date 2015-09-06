@@ -194,6 +194,8 @@ void DemoInit(GameState* state, GameMemory* memory)
 		paTriangle(t);
 	}
 
+	memory->_cycles = paGetCycles() / paGetCyclesCount();
+	paResetCycles();
 
 	//Free the memory
 	//Memory::MemoryRelease(memory->memory, vertices);

@@ -88,8 +88,8 @@ struct GameMemory
 	platform_complete_all_work* PlatformCompleteAllWork;
 
 	Memory::Memory memory;
+	u64 _cycles;
 };
-
 
 global_variable platform_add_entry *PlatformAddEntry;
 global_variable platform_complete_all_work *PlatformCompleteAllWork;

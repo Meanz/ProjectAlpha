@@ -71,6 +71,9 @@ namespace ProjectAlpha
 			vec4 DrawColor;
 
 			vec3 DirectionalLight;
+
+			r64 _cycles;
+			u32 _cyclesCount;
 		};
 
 		extern "C"
@@ -150,6 +153,13 @@ namespace ProjectAlpha
 		//enable,disable
 		void paEnable(uint32 mode);
 		void paDisable(uint32 mode);
+
+		//
+		r64 paGetCycles();
+		void paAddCycles(r64 cycles);
+		u32 paGetCyclesCount();
+		void paResetCycles();
+		void paSetCycles(r64 cycles);
 
 		//
 		void paSetDirectonalLight(vec3 lightDir);

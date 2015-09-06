@@ -50,6 +50,8 @@ extern "C"
 
 
 			DemoInit(gameState, gameMemory);
+
+			
 		}
 	}
 }
