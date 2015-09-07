@@ -359,6 +359,7 @@ namespace ProjectAlpha
 
 				__m128 texWidth_4x = _mm_set1_ps(254.0f); //width - 1 
 				__m128 texHeight_4x = _mm_set1_ps(254.0f); //width - 1
+				__m128 _255_4x = _mm_set1_ps(255.0f);
 				__m128 half_4x = _mm_set1_ps(0.5f);
 				__m128 one_4x = _mm_set1_ps(1.0f);
 				
@@ -430,18 +431,56 @@ namespace ProjectAlpha
 					colorB = _mm_mul_ps(colorB, lightAmt);
 
 					//Unpacks
-					//__m128i R1B1R0B0 = _mm_unpacklo_epi32(_mm_castps_si128(colorB), _mm_castps_si128(colorR));
-					//__m128i A1G1A0G0 = _mm_unpacklo_epi32(_mm_castps_si128(colorG), _mm_castps_si128(colorA));
+
+					//Convert from 0-1 linear space to 0-255 sRGB space
+					colorR = _mm_mul_ps(_255_4x, colorR);
+
+					//Convert floats to ints
+#if 1
+					__m128i IntR = _mm_cvtps_epi32(colorR);
+					__m128i IntG = _mm_cvtps_epi32(colorG);
+					__m128i IntB = _mm_cvtps_epi32(colorB);
+					__m128i IntA = _mm_cvtps_epi32(colorA);
+
+
+					__m128i out = _mm_or_si128(_mm_or_si128(_mm_or_si128(
+						_mm_slli_epi32(IntR, 16), 
+						_mm_slli_epi32(IntG, 8)), 
+						IntB), 
+						_mm_slli_epi32(IntA, 24));
+
+					*((__m128i*)pixel) = out;
+#else
+					//  
+					//			|B3|B2|B1|B0
+					// unpacklo
+					//			|R3|R2|R1|R0
+					//	=>
+					//			|R1|B1|R0|B0
+
+					__m128i R1B1R0B0 = _mm_unpacklo_epi32(_mm_castps_si128(colorB), _mm_castps_si128(colorR));
+					__m128i A1G1A0G0 = _mm_unpacklo_epi32(_mm_castps_si128(colorG), _mm_castps_si128(colorA));
+
+					__m128i R3B3R2B2 = _mm_unpackhi_epi32(_mm_castps_si128(colorB), _mm_castps_si128(colorR));
+					__m128i A3G3A2G2 = _mm_unpackhi_epi32(_mm_castps_si128(colorG), _mm_castps_si128(colorA));
+
+					__m128i ARGB0 = _mm_unpacklo_epi32(R1B1R0B0, A1G1A0G0);
+					__m128i ARGB1 = _mm_unpackhi_epi32(R1B1R0B0, A1G1A0G0);
+
+					__m128i ARGB2 = _mm_unpacklo_epi32(R3B3R2B2, A3G3A2G2);
+					__m128i ARGB3 = _mm_unpackhi_epi32(R3B3R2B2, A3G3A2G2);
 
 					//Write
 					for (int i = 0; i < 4; i++)
 					{
 						*(pixel + i) = (
-							((u32)(_f128(colorA, i) * 255) << 24) | 
-							((u32)(_f128(colorR, i) * 255) << 16) | 
-							((u32)(_f128(colorG, i) * 255) << 8 ) | 
-							((u32)(_f128(colorB, i) * 255) << 0 ));
+							((u32)(_f128(colorA, i) * 255) << 24) |
+							((u32)(_f128(colorR, i) * 255) << 16) |
+							((u32)(_f128(colorG, i) * 255) << 8) |
+							((u32)(_f128(colorB, i) * 255) << 0));
 					}
+#endif
+
 					
 					pixel += 4;
 				}
