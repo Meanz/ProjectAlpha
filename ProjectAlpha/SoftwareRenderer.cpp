@@ -362,6 +362,11 @@ namespace ProjectAlpha
 				__m128 _255_4x = _mm_set1_ps(255.0f);
 				__m128 half_4x = _mm_set1_ps(0.5f);
 				__m128 one_4x = _mm_set1_ps(1.0f);
+
+				__m128 drawColorR_4x = _mm_set1_ps(_Context.DrawColor.x);
+				__m128 drawColorG_4x = _mm_set1_ps(_Context.DrawColor.y);
+				__m128 drawColorB_4x = _mm_set1_ps(_Context.DrawColor.z);
+				__m128 drawColorA_4x = _mm_set1_ps(_Context.DrawColor.w);
 				
 				r32 xPrestep = xMin - left.x;
 				__m128 _xPrestep_4x = _mm_set1_ps(xPrestep);
@@ -412,24 +417,16 @@ namespace ProjectAlpha
 
 					z = _mm_div_ps(one_4x, oneOverZ);
 
-					for (int i = 0; i < 4; i++)
-					{
-						//Color!
-						_f128(colorR, i) = _Context.DrawColor.x;
-						_f128(colorG, i) = _Context.DrawColor.y;
-						_f128(colorB, i) = _Context.DrawColor.z;
-						_f128(colorA, i) = _Context.DrawColor.w;
-					}
-
 					//i32 srcX = (i32)((texCoordX * z) * (r32)(255 - 1) + 0.5f);
 					srcX = _mm_add_ps(_mm_mul_ps(_mm_mul_ps(texCoordX, z), texWidth_4x), half_4x);
 					srcY = _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(texCoordY, z), texHeight_4x), half_4x);
 
 					//Lighting multiplication
-					colorR = _mm_mul_ps(colorR, lightAmt);
-					colorG = _mm_mul_ps(colorG, lightAmt);
-					colorB = _mm_mul_ps(colorB, lightAmt);
-
+					colorA = drawColorA_4x;
+					colorR = _mm_mul_ps(drawColorR_4x, lightAmt);
+					colorG = _mm_mul_ps(drawColorG_4x, lightAmt);
+					colorB = _mm_mul_ps(drawColorB_4x, lightAmt);
+					
 					//Unpacks
 
 					//Convert from 0-1 linear space to 0-255 sRGB space
@@ -449,7 +446,7 @@ namespace ProjectAlpha
 						IntB), 
 						_mm_slli_epi32(IntA, 24));
 
-					*((__m128i*)pixel) = out;
+					_mm_storeu_si128(((__m128i*)pixel), out);
 #else
 					//  
 					//			|B3|B2|B1|B0
